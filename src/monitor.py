@@ -44,7 +44,9 @@ def create_issue_content(commits_data):
         content += "|----------|------|----------|\n"
         
         for commit in commits:
-            content += f"| {commit['date']} | {commit['author']} | {commit['message'].split('\n')[0]} |\n"
+            # 获取提交信息的第一行，移除换行符
+            message = commit['message'].split('\n')[0]
+            content += f"| {commit['date']} | {commit['author']} | {message} |\n"
         
         content += "\n"
     
