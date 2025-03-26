@@ -135,8 +135,10 @@ def main():
     else:    
         # 创建issue
         try:
+            # 获取昨天的日期并格式化
+            yesterday_date = (datetime.now(TIME_ZONE) - timedelta(days=1)).strftime('%Y-%m-%d')
             issue = current_repo.create_issue(
-                title=f"仓库更新报告 ({datetime.now(pytz.timezone('Asia/Shanghai'))-timedelta(days=1).strftime('%Y-%m-%d')})",
+                title=f"仓库更新报告 ({yesterday_date})",
                 body=issue_content
             )
             print(f"成功创建issue: #{issue.number}")
