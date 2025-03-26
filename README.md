@@ -22,6 +22,37 @@
 1. Fork 本仓库到你的GitHub账号
 2. 在仓库的 Settings -> Actions -> General 中启用 Actions
 
+## 本地调试
+
+1. 克隆仓库到本地：
+   ```bash
+   git clone https://github.com/你的用户名/argus.git
+   cd argus
+   ```
+
+2. 安装依赖：
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. 配置调试环境：
+   - 复制 `debug.sh` 为 `debug.local.sh`
+   - 编辑 `debug.local.sh`，填入你的GitHub Token和仓库信息
+   - 给脚本添加执行权限：
+     ```bash
+     chmod +x debug.local.sh
+     ```
+
+4. 运行调试脚本：
+   ```bash
+   ./debug.local.sh
+   ```
+
+5. 命令行参数说明：
+   - `--token`: GitHub个人访问令牌（PAT）
+   - `--repo`: 目标仓库（格式：owner/repo）
+   - `--debug`: 启用调试模式，只显示结果不创建issue
+
 ## 自定义配置
 
 如果你想监控其他仓库，可以修改 `src/monitor.py` 文件中的 `REPOSITORIES` 列表：
@@ -51,5 +82,6 @@ REPOSITORIES = [
 
 ## 注意事项
 
-1. 确保Actions有足够的权限（issues: write, contents: read）
+1. 确保Actions有足够的权限（issues: write, contents: write, pull-requests: write）
 2. 建议定期检查Actions的运行状态，确保监控正常工作
+3. 本地调试时，请确保你的GitHub Token有足够的权限
