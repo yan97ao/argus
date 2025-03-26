@@ -17,7 +17,8 @@ def get_commits_since_last_check(repo, last_check_time):
     """获取指定时间后的所有提交"""
     commits = []
     for commit in repo.get_commits():
-        commit_time = parse(commit.commit.author.date)
+        # 直接使用commit.commit.author.date，它已经是datetime对象
+        commit_time = commit.commit.author.date
         if commit_time <= last_check_time:
             break
         commits.append({
@@ -57,7 +58,11 @@ def main():
     g = Github()
     
     # 获取当前仓库
-    current_repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
+    try:
+        current_repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
+    except Exception as e:
+        print(f"Error getting current repository: {str(e)}")
+        return
     
     # 获取昨天的日期（CST时区）
     cst = pytz.timezone('Asia/Shanghai')
@@ -86,6 +91,9 @@ def main():
         print("Successfully created issue")
     except Exception as e:
         print(f"Error creating issue: {str(e)}")
+        # 打印更详细的错误信息
+        if hasattr(e, 'data'):
+            print(f"Error details: {e.data}")
 
 if __name__ == "__main__":
     main() 
