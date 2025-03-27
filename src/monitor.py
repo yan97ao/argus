@@ -31,6 +31,15 @@ def get_commits_lastday(repo):
         print(f"==== 获取 {repo.full_name} 提交失败: {e.status} {e.data.get('message')}")
     return commits
 
+def format_commit_time(commit_time):
+    """格式化提交时间为北京时间"""
+    if commit_time.tzinfo is None:
+        # 如果时间没有时区信息，假设是UTC时间
+        commit_time = commit_time.replace(tzinfo=pytz.UTC)
+    # 转换为北京时间
+    beijing_time = commit_time.astimezone(TIME_ZONE)
+    return beijing_time.strftime('%Y-%m-%d %H:%M:%S')
+
 def create_issue_content(commits_data):
     """创建issue内容"""
     today = datetime.now(TIME_ZONE).strftime('%Y-%m-%d')
@@ -47,11 +56,29 @@ def create_issue_content(commits_data):
         content += "|----------|------|----------|\n"
         
         for commit in commits:
-            # 获取提交信息的第一行，移除换行符
-            message = commit.commit.message.split('\n')[0]
-            # 处理表格中的竖线字符，避免格式错误
-            message = message.replace('|', '\\|')
-            content += f"| {commit.commit.author.date} | {commit.commit.author.name} | {message} |\n"
+            # 格式化提交时间
+            commit_time = format_commit_time(commit.commit.author.date)
+            
+            # 获取作者姓名
+            author_name = commit.commit.author.name
+            
+            # 获取提交信息，可能有多行
+            commit_msg = commit.commit.message
+            
+            # 处理提交信息：保留所有行，但会在表格中处理
+            msg_lines = commit_msg.split('\n')
+            first_line = msg_lines[0].replace('|', '\\|') if msg_lines else ""
+            
+            # 添加第一行到表格
+            content += f"| {commit_time} | {author_name} | {first_line} |\n"
+            
+            # 如果有多行提交信息，添加额外行
+            if len(msg_lines) > 1:
+                for line in msg_lines[1:]:
+                    if line.strip():  # 跳过空行
+                        # 缩进后续行，使其在表格中对齐
+                        indented_line = line.replace('|', '\\|')
+                        content += f"| | | {indented_line} |\n"
         
         content += "\n"
     
