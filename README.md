@@ -8,6 +8,7 @@
 2. 每天凌晨2点（CST）自动运行检查
 3. 生成格式化的更新报告
 4. 自动创建issue记录更新内容
+5. 使用LLM分析提交内容，提供技术洞察
 
 ## 技术细节
 
@@ -16,11 +17,22 @@
    2. https://github.com/sgl-project/sglang
 2. 利用github action，每日2:00 CST拉取代码，并列出所有的commit msg
 3. 将commit msg列表组织成表格，新建一个以当前日期为题目的issue中
+4. 可选择使用OpenRouter API调用LLM对提交内容进行分析
+
+## 代码结构
+
+- `src/github_utils.py` - GitHub API操作相关的工具函数
+- `src/monitor.py` - 主程序，负责调用工具函数完成监控任务
+- `src/llm.py` - LLM集成相关功能，用于分析代码变更
+- `.github/workflows/daily-update.yml` - GitHub Actions工作流定义
 
 ## 使用方法
 
 1. Fork 本仓库到你的GitHub账号
 2. 在仓库的 Settings -> Actions -> General 中启用 Actions
+3. 如果需要LLM分析功能，需要设置以下密钥：
+   - `OPENROUTER_API_KEY`: OpenRouter API密钥
+   - `OPENROUTER_MODEL`: (可选) 使用的模型，默认为"anthropic/claude-3-haiku"
 
 ## 本地调试
 
@@ -35,23 +47,18 @@
    pip install -r requirements.txt
    ```
 
-3. 配置调试环境：
-   - 复制 `debug.sh` 为 `debug.local.sh`
-   - 编辑 `debug.local.sh`，填入你的GitHub Token和仓库信息
-   - 给脚本添加执行权限：
-     ```bash
-     chmod +x debug.local.sh
-     ```
-
-4. 运行调试脚本：
+3. 运行调试模式：
    ```bash
-   ./debug.local.sh
+   python src/monitor.py --debug
    ```
 
-5. 命令行参数说明：
+4. 命令行参数说明：
    - `--token`: GitHub个人访问令牌（PAT）
    - `--repo`: 目标仓库（格式：owner/repo）
    - `--debug`: 启用调试模式，只显示结果不创建issue
+   - `--enable-analysis`: 启用LLM分析功能
+   - `--api-key`: OpenRouter API密钥
+   - `--model`: 指定LLM模型名称
 
 ## 自定义配置
 
@@ -65,16 +72,46 @@ REPOSITORIES = [
 ]
 ```
 
+## LLM分析功能
+
+当启用LLM分析功能时，系统会：
+
+1. 收集提交的代码变更信息，包括文件修改、添加和删除
+2. 将这些信息发送到OpenRouter API进行分析
+3. 获取对所有仓库更新的整体分析
+4. 为每个仓库提供详细的技术洞察
+5. 将这些分析结果添加到issue中
+
+你可以通过以下方式使用LLM分析功能：
+
+1. 在命令行直接传递API密钥：
+   ```bash
+   python src/monitor.py --enable-analysis --api-key "your-api-key" --model "anthropic/claude-3-haiku"
+   ```
+
+2. 通过环境变量设置：
+   ```bash
+   export OPENROUTER_API_KEY="your-api-key" 
+   export OPENROUTER_MODEL="anthropic/claude-3-haiku"
+   python src/monitor.py --enable-analysis
+   ```
+
+3. 在GitHub Actions中，通过仓库的Secrets设置：
+   - 在仓库的Settings -> Secrets -> Actions中设置`OPENROUTER_API_KEY`和`OPENROUTER_MODEL`
+   - 工作流会自动使用这些值
+
 ## 运行机制
 
 1. GitHub Actions 会在每天凌晨2点（CST）自动运行
 2. 脚本会检查配置的仓库在过去24小时内的所有提交
-3. 将提交信息整理成表格形式
-4. 创建一个新的issue，标题格式为"仓库更新报告 (YYYY-MM-DD)"
-5. issue内容包含每个仓库的更新情况，包括：
-   - 提交时间
+3. 将提交信息整理成表格形式，包括多行提交信息
+4. 可选地使用LLM分析提交内容
+5. 创建一个新的issue，标题格式为"仓库更新报告 (YYYY-MM-DD)"
+6. issue内容包含每个仓库的更新情况，包括：
+   - 提交时间（北京时间）
    - 提交作者
-   - 提交信息
+   - 完整的提交信息
+   - LLM分析结果（如果启用）
 
 ## 手动触发
 
@@ -83,5 +120,8 @@ REPOSITORIES = [
 ## 注意事项
 
 1. 确保Actions有足够的权限（issues: write, contents: write, pull-requests: write）
-2. 建议定期检查Actions的运行状态，确保监控正常工作
-3. 本地调试时，请确保你的GitHub Token有足够的权限
+2. 使用LLM分析功能会消耗API额度，请注意OpenRouter的使用限制
+3. 对于非常大的提交或大量文件变更，LLM分析可能不完整
+4. 建议定期检查Actions的运行状态，确保监控正常工作
+5. 本地调试时，请确保你的GitHub Token有足够的权限
+6. API密钥和模型名称可以通过命令行参数或环境变量传递，命令行参数优先级更高
