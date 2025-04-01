@@ -30,7 +30,8 @@
 
 1. Fork 本仓库到你的GitHub账号
 2. 在仓库的 Settings -> Actions -> General 中启用 Actions
-3. 如果需要LLM分析功能，需要设置以下密钥：
+3. 在仓库的 Settings -> Secrets -> Actions 中设置以下密钥：
+   - `TOKEN`: GitHub个人访问令牌（PAT）
    - `OPENROUTER_API_KEY`: OpenRouter API密钥
    - `OPENROUTER_MODEL`: (可选) 使用的模型，默认为"anthropic/claude-3-haiku"
 
@@ -49,7 +50,7 @@
 
 3. 运行调试模式：
    ```bash
-   python src/monitor.py --debug
+   python src/monitor.py --debug --token "你的GitHub Token" --enable-analysis --repo "你的用户名/argus" --openrouter-api-key "你的OpenRouter API密钥" --openrouter-model "anthropic/claude-3-haiku"
    ```
 
 4. 命令行参数说明：
@@ -57,8 +58,8 @@
    - `--repo`: 目标仓库（格式：owner/repo）
    - `--debug`: 启用调试模式，只显示结果不创建issue
    - `--enable-analysis`: 启用LLM分析功能
-   - `--api-key`: OpenRouter API密钥
-   - `--model`: 指定LLM模型名称
+   - `--openrouter-api-key`: OpenRouter API密钥
+   - `--openrouter-model`: 指定LLM模型名称
 
 ## 自定义配置
 
@@ -81,24 +82,6 @@ REPOSITORIES = [
 3. 获取对所有仓库更新的整体分析
 4. 为每个仓库提供详细的技术洞察
 5. 将这些分析结果添加到issue中
-
-你可以通过以下方式使用LLM分析功能：
-
-1. 在命令行直接传递API密钥：
-   ```bash
-   python src/monitor.py --enable-analysis --api-key "your-api-key" --model "anthropic/claude-3-haiku"
-   ```
-
-2. 通过环境变量设置：
-   ```bash
-   export OPENROUTER_API_KEY="your-api-key" 
-   export OPENROUTER_MODEL="anthropic/claude-3-haiku"
-   python src/monitor.py --enable-analysis
-   ```
-
-3. 在GitHub Actions中，通过仓库的Secrets设置：
-   - 在仓库的Settings -> Secrets -> Actions中设置`OPENROUTER_API_KEY`和`OPENROUTER_MODEL`
-   - 工作流会自动使用这些值
 
 ## 运行机制
 
