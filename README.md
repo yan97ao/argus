@@ -15,6 +15,7 @@
 1. 该项目目前用于监控以下项目的更新
    1. https://github.com/vllm-project/vllm
    2. https://github.com/sgl-project/sglang
+   3. https://github.com/ai-dynamo/dynamo
 2. 利用github action，每日2:00 CST拉取代码，并列出所有的commit msg
 3. 将commit msg列表组织成表格，新建一个以当前日期为题目的issue中
 4. 可选择使用OpenRouter API调用LLM对提交内容进行分析

@@ -22,7 +22,8 @@ from llm import (
 # 配置要监控的仓库
 REPOSITORIES = [
     "vllm-project/vllm",
-    "sgl-project/sglang"
+    "sgl-project/sglang",
+    "ai-dynamo/dynamo",
 ]
 
 def main():
