@@ -75,13 +75,20 @@ def get_commits_lastday(repo):
     Returns:
         list: 提交对象列表
     """
+    # 获取北京时间的昨天日期
     yesterday = datetime.now(TIME_ZONE) - timedelta(days=1)
+    
+    # 计算北京时间的开始和结束
     since = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
     until = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
     
-    logging.info(f"获取 {repo.full_name} 提交从 {since} 到 {until}")
+    # 将时间转换为UTC
+    since_utc = since.astimezone(pytz.UTC)
+    until_utc = until.astimezone(pytz.UTC)
+    
+    logging.info(f"获取 {repo.full_name} 提交从 {since_utc} (UTC) 到 {until_utc} (UTC)")
     try:
-        paged_commits = repo.get_commits(since=since, until=until)
+        paged_commits = repo.get_commits(since=since_utc, until=until_utc)
         commits = [c for c in paged_commits]
         return commits
     except GithubException as e:
