@@ -30,7 +30,7 @@ def analyze_commit(commits, api_key=None, model=None):
     result = ""    
     for commit in commits:
         logging.info(f"分析提交: {commit.sha}")
-        prompt = "请分析以下Git提交，总结主要变更，识别关键功能修改，并指出潜在的重要更新：\n\n"
+        prompt = "请根据以下Git提交总结主要变更，识别关键功能修改，并指出潜在的重要更新：\n\n"
         prompt += f"- 提交: {commit.sha}\n"
         prompt += f"- 作者: {commit.commit.author.name}\n"
         prompt += f"- 消息: {commit.commit.message}\n"
@@ -60,8 +60,12 @@ def analyze_commit(commits, api_key=None, model=None):
         prompt += "\n---\n\n"
     
         # 添加分析要求
-        prompt += """请提供以下分析：
-此次更新的重要程度（低/中/高）以及200字以内的内容总结
+        prompt += """严格按照以下格式提供分析：
+**重要程度**：[低/中/高]
+**影响范围**：[影响哪些模块或功能]
+**变更摘要**：[200字以内的内容总结]
+**核心变更**：[以列表形式展示每个关键变更点]
+**潜在影响**：[描述此次变更可能对系统产生的影响]
 
 请用中文回答，格式清晰。"""
         logging.debug("=" * 40)
