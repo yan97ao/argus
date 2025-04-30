@@ -31,4 +31,4 @@ jobs:
       - name: Run monitor script
         env:
           GITHUB_REPOSITORY_NAME: ${{ github.repository }}
-        run: python src/monitor.py --debug --token "${{ secrets.TOKEN }}" --enable-analysis --repo "${{ github.repository }}" --openrouter-api-key "${{ secrets.OPENROUTER_API_KEY }}" --openrouter-model "${{ secrets.OPENROUTER_MODEL }}" 
+        run: python src/monitor.py --debug --github-token "${{ secrets.TOKEN }}" --enable-analysis --repo "${{ github.repository }}" --llm-api-key "${{ secrets.LLM_API_KEY }}" --llm-model "${{ secrets.LLM_MODEL }}" 

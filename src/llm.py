@@ -19,13 +19,13 @@ def analyze_commit(commits, api_key=None, model=None):
         return "没有提交可供分析"
     
     if api_key is None:
-        error_msg = "未提供OpenRouter API密钥，请通过--api-key参数或OPENROUTER_API_KEY环境变量设置"
+        error_msg = "未提供大模型API密钥，请通过--llm-api-key参数或LLM_API_KEY环境变量设置"
         logging.error(error_msg)
         return error_msg
 
     if model is None:
-        logging.warning("未提供OpenRouter模型，使用默认模型: deepseek/deepseek-chat-v3-0324")
-        model = "deepseek/deepseek-chat-v3-0324"
+        logging.warning("未提供大模型名称，使用默认模型: deepseek-chat")
+        model = "deepseek-chat"
 
     result = ""    
     for commit in commits:
@@ -71,7 +71,7 @@ def analyze_commit(commits, api_key=None, model=None):
     
         # 调用LLM进行分析
         try:
-            output = call_openrouter(prompt, api_key=api_key, model=model)
+            output = call_llm(prompt, api_key=api_key, model=model)
             logging.debug("LLM分析结果:")
             logging.debug(output)
             result += "### " + commit.sha + "\n"
@@ -84,7 +84,7 @@ def analyze_commit(commits, api_key=None, model=None):
 
     return result
 
-def call_openrouter(prompt: str, api_key: str = None, model: str = None) -> str:
+def call_llm(prompt: str, api_key: str = None, model: str = None) -> str:
     """调用OpenRouter API获取LLM回复
     
     Args:
@@ -96,7 +96,7 @@ def call_openrouter(prompt: str, api_key: str = None, model: str = None) -> str:
         str: LLM回复内容
     """    
     # OpenRouter API端点
-    api_url = "https://openrouter.ai/api/v1/chat/completions"
+    api_url = "https://api.deepseek.com/chat/completions"
     
     # 请求头
     headers = {
@@ -109,7 +109,7 @@ def call_openrouter(prompt: str, api_key: str = None, model: str = None) -> str:
     data = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "你是一位专业的代码审查专家和Git提交分析师。你擅长分析代码变更，提取关键信息，并提供简洁明了的总结。"},
+            {"role": "system", "content": "你是一位资深的系统架构师和代码审查专家。擅长从整体和局部来分析代码变更，提取关键信息，并提供简洁明了的总结。"},
             {"role": "user", "content": prompt}
         ],
         "temperature": 1.0,  # 较低的温度使输出更确定性

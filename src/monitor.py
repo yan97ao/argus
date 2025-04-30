@@ -29,12 +29,12 @@ REPOSITORIES = [
 def main():
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='GitHub仓库更新监控工具')
-    parser.add_argument('--token', help='GitHub个人访问令牌（PAT）')
+    parser.add_argument('--github-token', help='GitHub个人访问令牌（PAT）')
     parser.add_argument('--repo', help='目标仓库（格式：owner/repo）')
     parser.add_argument('--debug', action='store_true', help='启用调试模式')
     parser.add_argument('--enable-analysis', action='store_true', help='启用LLM分析模式')
-    parser.add_argument('--openrouter-api-key', help='OpenRouter API密钥')
-    parser.add_argument('--openrouter-model', help='OpenRouter 模型名称，例如: anthropic/claude-3-haiku')
+    parser.add_argument('--llm-api-key', help='OpenRouter API密钥')
+    parser.add_argument('--llm-model', help='OpenRouter 模型名称，例如: anthropic/claude-3-haiku')
     args = parser.parse_args()
 
     # 设置调试模式
@@ -49,7 +49,7 @@ def main():
     logging.debug("调试模式已启用")
 
     # 初始化GitHub客户端
-    github_client = init_github_client(token=args.token)
+    github_client = init_github_client(token=args.github_token)
     if not github_client:
         logging.error("无法初始化GitHub客户端，程序终止")
         sys.exit(1)
@@ -74,7 +74,7 @@ def main():
         issue_content += create_commit_report(commits)
         if args.enable_analysis:
             logging.info("正在使用LLM分析提交...")
-            analysis_result = analyze_commit(commits, api_key=args.openrouter_api_key, model=args.openrouter_model)
+            analysis_result = analyze_commit(commits, api_key=args.llm_api_key, model=args.llm_model)
             logging.debug("LLM分析结果:")
             logging.debug(analysis_result)
             issue_content += f"## {repo_name} 的LLM分析结果\n\n"
