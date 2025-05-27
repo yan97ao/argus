@@ -1,5 +1,7 @@
 # Argus - GitHub仓库监控工具
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/yan97ao/argus)
+
 🔍 利用GitHub Actions自动跟踪开源项目的每日更新，并使用AI分析代码变更
 
 ## ✨ 功能特点
