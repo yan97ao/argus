@@ -33,8 +33,8 @@ def main():
     parser.add_argument('--repo', help='目标仓库（格式：owner/repo）')
     parser.add_argument('--debug', action='store_true', help='启用调试模式')
     parser.add_argument('--enable-analysis', action='store_true', help='启用LLM分析模式')
-    parser.add_argument('--llm-api-key', help='OpenRouter API密钥')
-    parser.add_argument('--llm-model', help='OpenRouter 模型名称，例如: anthropic/claude-3-haiku')
+    parser.add_argument('--llm-api-key', help='DeepSeek API密钥')
+    parser.add_argument('--llm-model', help='DeepSeek 模型名称，例如: deepseek-chat')
     args = parser.parse_args()
 
     # 设置调试模式
