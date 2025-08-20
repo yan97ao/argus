@@ -30,7 +30,8 @@ argus/
 │   ├── github_utils.py     # GitHub API操作工具函数
 │   └── llm.py             # LLM集成模块，提供AI分析功能
 ├── .github/workflows/
-│   └── daily-update.yml   # GitHub Actions工作流定义
+│   ├── daily-update.yml   # GitHub Actions工作流定义 - 每日监控
+│   └── stale.yml          # GitHub Actions过期Issue/PR管理
 ├── requirements.txt        # Python依赖包列表
 └── README.md              # 项目说明文档
 ```
@@ -153,6 +154,17 @@ REPOSITORIES = [
 - **手动触发**: 在仓库的Actions页面点击"Run workflow"
 - **查看日志**: 在Actions页面查看详细的运行日志
 - **详细日志**: 使用`--debug`参数启用详细日志输出（注意：仍会创建Issue）
+
+## 🗂️ 自动化管理
+
+### 过期Issue清理
+仓库配置了自动化的过期Issue和PR管理机制：
+
+- **检测频率**: 每日凌晨运行自动检查
+- **标记为过期**: 30天无活动的Issue/PR会被标记为`stale`
+- **自动关闭**: 标记为过期后7天内无新活动将自动关闭
+- **豁免标签**: 带有`keep-alive`、`pinned`、`enhancement`标签的Issue不会被自动处理
+- **手动触发**: 可在Actions页面手动触发"Stale Issues and PRs"工作流
 
 ## ⚠️ 注意事项
 
