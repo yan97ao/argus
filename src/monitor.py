@@ -6,15 +6,7 @@ import sys
 from datetime import datetime, timedelta
 import logging
 
-from github_utils import (
-    init_github_client, 
-    get_repository, 
-    get_commits_lastday, 
-    create_commit_report, 
-    create_issue,
-    close_old_issues,
-    TIME_ZONE
-)
+import github_utils
 
 from llm import (
     analyze_commit,
@@ -50,13 +42,13 @@ def main():
     logging.debug("调试模式已启用")
 
     # 初始化GitHub客户端
-    github_client = init_github_client(token=args.github_token)
+    github_client = github_utils.init_github_client(token=args.github_token)
     if not github_client:
         logging.error("无法初始化GitHub客户端，程序终止")
         sys.exit(1)
     
     # 获取当前仓库（用于创建issue）
-    current_repo = get_repository(github_client, args.repo)
+    current_repo = github_utils.get_repository(github_client, args.repo)
     if not current_repo:
         logging.error("无法获取当前仓库，程序终止")
         sys.exit(1)
@@ -64,15 +56,15 @@ def main():
     issue_content = "# 每日更新报告（" + get_yesterday_date() + "）\n\n"
     for repo_name in REPOSITORIES:
         logging.info(f"正在获取 {repo_name} 的提交...")
-        repo = get_repository(github_client, repo_name)
+        repo = github_utils.get_repository(github_client, repo_name)
         if not repo:
             logging.error(f"跳过 {repo_name}")
             continue
         logging.info(f"仓库信息: {repo.full_name}, 星标: {repo.stargazers_count}")
-        commits = get_commits_lastday(repo)
+        commits = github_utils.get_commits_lastday(repo)
         logging.info(f"成功获取 {repo_name} 的 {len(commits)} 个提交")
         issue_content += f"## {repo_name}\n\n"
-        issue_content += create_commit_report(commits)
+        issue_content += github_utils.create_commit_report(commits)
         if args.enable_analysis:
             logging.info("正在使用LLM分析提交...")
             analysis_result = analyze_commit(commits, api_key=args.llm_api_key, model=args.llm_model)
@@ -88,15 +80,15 @@ def main():
     # 创建issue
     yesterday_date = get_yesterday_date()
     issue_title = f"仓库更新报告 ({yesterday_date})"
-    create_issue(current_repo, issue_title, issue_content)
+    github_utils.create_issue(current_repo, issue_title, issue_content)
     
     # 扫描并关闭超过30天的旧issue
     logging.info("开始扫描并关闭超过30天的旧issue...")
-    closed_count = close_old_issues(current_repo, days_threshold=30)
+    closed_count = github_utils.close_old_issues(current_repo, days_threshold=30)
     logging.info(f"任务完成，总共关闭了 {closed_count} 个旧issue")
 
 def get_yesterday_date():
-    yesterday = datetime.now(TIME_ZONE) - timedelta(days=1)
+    yesterday = datetime.now(github_utils.TIME_ZONE) - timedelta(days=1)
     return yesterday.strftime('%Y-%m-%d')
 
 if __name__ == "__main__":
