@@ -52,6 +52,8 @@ argus/
    - `LLM_API_KEY`: DeepSeek API密钥
    - `LLM_MODEL`: （可选）模型名称，默认为 `deepseek-chat`
 
+4. **工作流说明**: 默认配置使用详细日志模式（`--debug`），仍会创建Issues但会输出更多调试信息
+
 ### 2. 本地开发调试
 
 ```bash
@@ -85,7 +87,7 @@ python src/monitor.py \
 |------|------|------|--------|
 | `--github-token` | GitHub个人访问令牌 | 是 | - |
 | `--repo` | 目标仓库（格式：owner/repo） | 是 | - |
-| `--debug` | 启用调试模式，不创建实际Issue | 否 | False |
+| `--debug` | 启用详细日志输出（注意：仍会创建GitHub Issue） | 否 | False |
 | `--enable-analysis` | 启用LLM分析功能 | 否 | False |
 | `--llm-api-key` | DeepSeek API密钥 | 否* | - |
 | `--llm-model` | 指定LLM模型名称 | 否 | deepseek-chat |
@@ -96,6 +98,7 @@ python src/monitor.py \
 
 - `GITHUB_TOKEN`: GitHub访问令牌
 - `GITHUB_REPOSITORY`: 目标仓库名称
+- `GITHUB_REPOSITORY_NAME`: 目标仓库名称（备用）
 - `LLM_API_KEY`: DeepSeek API密钥
 - `LLM_MODEL`: LLM模型名称
 
@@ -149,9 +152,18 @@ REPOSITORIES = [
 
 - **手动触发**: 在仓库的Actions页面点击"Run workflow"
 - **查看日志**: 在Actions页面查看详细的运行日志
-- **调试模式**: 使用`--debug`参数在本地测试而不创建Issue
+- **详细日志**: 使用`--debug`参数启用详细日志输出（注意：仍会创建Issue）
 
 ## ⚠️ 注意事项
+
+### ⚠️ 重要提醒：调试模式行为
+**`--debug` 模式仍然会创建GitHub Issues！** 该参数只启用详细日志输出，不会阻止Issue创建。
+
+#### 安全测试建议
+- **使用专用测试仓库**：建议在自己拥有的测试仓库中进行调试
+- **模块测试**：使用 `python -c "from src.github_utils import *; print('GitHub utils loaded')"` 测试模块导入
+- **CLI验证**：使用 `python src/monitor.py --help` 验证命令行功能
+- **避免在生产仓库测试**：防止在重要项目中创建不必要的Issues
 
 ### 权限要求
 - GitHub Token需要以下权限：
@@ -184,8 +196,8 @@ A: 检查GitHub Token权限，确保包含repo和issues权限
 **Q: LLM分析返回错误**
 A: 验证DeepSeek API密钥是否正确，检查账户余额
 
-**Q: 没有生成Issue**
-A: 检查是否使用了`--debug`模式，该模式不会创建实际Issue
+**Q: 使用了`--debug`参数但仍然创建了Issue**
+A: 这是正常行为。`--debug`参数只启用详细日志，不会阻止Issue创建。建议在专用测试仓库中进行调试
 
 **Q: 提交信息显示不完整**
 A: 可能是API限制导致，检查GitHub API速率限制状态
@@ -193,12 +205,15 @@ A: 可能是API限制导致，检查GitHub API速率限制状态
 ### 调试技巧
 
 ```bash
-# 启用详细日志
-python src/monitor.py --debug --github-token "token" --repo "owner/repo"
-
-# 测试单个功能
+# 测试模块导入（安全，不会创建Issue）
 python -c "from src.github_utils import *; print('GitHub utils loaded')"
 python -c "from src.llm import *; print('LLM module loaded')"
+
+# 验证CLI功能（安全，不会创建Issue）
+python src/monitor.py --help
+
+# 启用详细日志（注意：仍会创建Issue，建议在测试仓库使用）
+python src/monitor.py --debug --github-token "token" --repo "your-test-repo/test"
 ```
 
 ## 📄 许可证
