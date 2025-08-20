@@ -12,6 +12,7 @@ from github_utils import (
     get_commits_lastday, 
     create_commit_report, 
     create_issue,
+    close_old_issues,
     TIME_ZONE
 )
 
@@ -88,6 +89,11 @@ def main():
     yesterday_date = get_yesterday_date()
     issue_title = f"仓库更新报告 ({yesterday_date})"
     create_issue(current_repo, issue_title, issue_content)
+    
+    # 扫描并关闭超过30天的旧issue
+    logging.info("开始扫描并关闭超过30天的旧issue...")
+    closed_count = close_old_issues(current_repo, days_threshold=30)
+    logging.info(f"任务完成，总共关闭了 {closed_count} 个旧issue")
 
 def get_yesterday_date():
     yesterday = datetime.now(TIME_ZONE) - timedelta(days=1)

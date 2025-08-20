@@ -179,3 +179,71 @@ def create_issue(repo, title, body, debug=False):
     except Exception as e:
         logging.error(f"创建issue出错: {str(e)}")
     return None
+
+def get_old_open_issues(repo, days_threshold=30):
+    """获取超过指定天数的开放issue
+    
+    Args:
+        repo: GitHub仓库实例
+        days_threshold: 天数阈值，默认30天
+        
+    Returns:
+        list: 超过阈值天数的开放issue列表
+    """
+    try:
+        # 计算阈值日期
+        threshold_date = datetime.now(TIME_ZONE) - timedelta(days=days_threshold)
+        threshold_utc = threshold_date.astimezone(pytz.UTC)
+        
+        logging.info(f"扫描 {repo.full_name} 中超过 {days_threshold} 天的开放issue...")
+        
+        # 获取所有开放的issue
+        open_issues = repo.get_issues(state='open')
+        old_issues = []
+        
+        for issue in open_issues:
+            # 检查创建时间是否超过阈值
+            if issue.created_at < threshold_utc:
+                old_issues.append(issue)
+                logging.debug(f"发现旧issue: #{issue.number} - {issue.title} (创建于: {issue.created_at})")
+        
+        logging.info(f"发现 {len(old_issues)} 个超过 {days_threshold} 天的开放issue")
+        return old_issues
+        
+    except GithubException as e:
+        logging.error(f"获取 {repo.full_name} 旧issue失败: {e.status} {e.data.get('message')}")
+    except Exception as e:
+        logging.error(f"获取 {repo.full_name} 旧issue出错: {str(e)}")
+    return []
+
+def close_old_issues(repo, days_threshold=30):
+    """关闭超过指定天数的开放issue
+    
+    Args:
+        repo: GitHub仓库实例
+        days_threshold: 天数阈值，默认30天
+        
+    Returns:
+        int: 成功关闭的issue数量
+    """
+    old_issues = get_old_open_issues(repo, days_threshold)
+    closed_count = 0
+    
+    for issue in old_issues:
+        try:
+            # 添加关闭评论
+            close_comment = f"此issue已开放超过{days_threshold}天，自动关闭。如仍需处理，请重新开启。"
+            issue.create_comment(close_comment)
+            
+            # 关闭issue
+            issue.edit(state='closed')
+            logging.info(f"成功关闭旧issue: #{issue.number} - {issue.title}")
+            closed_count += 1
+            
+        except GithubException as e:
+            logging.error(f"关闭issue #{issue.number} 失败: {e.status} {e.data.get('message')}")
+        except Exception as e:
+            logging.error(f"关闭issue #{issue.number} 出错: {str(e)}")
+    
+    logging.info(f"成功关闭 {closed_count} 个旧issue")
+    return closed_count
