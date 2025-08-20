@@ -44,7 +44,7 @@ jobs:
           exempt-pr-labels: 'keep-alive,pinned,work-in-progress'
           
           # Limits (to avoid rate limiting)
-          operations-per-run: 30
+          operations-per-run: 100
           remove-stale-when-updated: true
           
           # Only process issues and PRs, not drafts
