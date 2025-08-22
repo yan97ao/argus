@@ -141,7 +141,7 @@ REPOSITORIES = [
 2. **数据收集**: 获取各监控仓库过去24小时的所有提交
 3. **信息整理**: 将提交信息按时间排序，格式化为表格
 4. **AI分析**: （可选）使用DeepSeek API分析代码变更
-5. **报告生成**: 创建标题为"仓库更新报告 (YYYY-MM-DD)"的Issue
+5. **报告生成**: 为每个监控仓库分别创建一个 Issue，标题格式为“(YYYY-MM-DD): (owner/repo) 仓库更新报告”
 6. **内容包含**:
    - 📅 提交时间（北京时间）
    - 👤 提交作者信息
@@ -173,7 +173,7 @@ REPOSITORIES = [
 
 #### 安全测试建议
 - **使用专用测试仓库**：建议在自己拥有的测试仓库中进行调试
-- **模块测试**：使用 `python -c "from src.github_utils import *; print('GitHub utils loaded')"` 测试模块导入
+- **模块测试**：使用 `PYTHONPATH=src python -c "from github_utils import *; print('GitHub utils loaded')"` 测试模块导入
 - **CLI验证**：使用 `python src/monitor.py --help` 验证命令行功能
 - **避免在生产仓库测试**：防止在重要项目中创建不必要的Issues
 
@@ -218,8 +218,8 @@ A: 可能是API限制导致，检查GitHub API速率限制状态
 
 ```bash
 # 测试模块导入（安全，不会创建Issue）
-python -c "from src.github_utils import *; print('GitHub utils loaded')"
-python -c "from src.llm import *; print('LLM module loaded')"
+PYTHONPATH=src python -c "from github_utils import *; print('GitHub utils loaded')"
+PYTHONPATH=src python -c "from llm import *; print('LLM module loaded')"
 
 # 验证CLI功能（安全，不会创建Issue）
 python src/monitor.py --help
