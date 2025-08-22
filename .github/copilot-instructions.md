@@ -15,8 +15,8 @@ Always reference these instructions first and fallback to search or bash command
   
 ### Build and Test
 - Validate the installation:
-  - `python -c "from src.github_utils import *; print('GitHub utils loaded')"` -- test module imports
-  - `python -c "from src.llm import *; print('LLM module loaded')"` -- test LLM module  
+  - `PYTHONPATH=src python -c "from github_utils import *; print('GitHub utils loaded')"` -- test module imports
+  - `PYTHONPATH=src python -c "from llm import *; print('LLM module loaded')"` -- test LLM module  
   - `python -m py_compile src/monitor.py src/github_utils.py src/llm.py` -- validate syntax
   - `python src/monitor.py --help` -- verify CLI functionality
 
@@ -53,8 +53,8 @@ Always reference these instructions first and fallback to search or bash command
 ### Manual Testing Scenarios
 - **ALWAYS validate module imports** before making changes to ensure no syntax errors:
   ```bash
-  python -c "from src.github_utils import *; print('GitHub utils loaded')"
-  python -c "from src.llm import *; print('LLM module loaded')"
+  PYTHONPATH=src python -c "from github_utils import *; print('GitHub utils loaded')"
+  PYTHONPATH=src python -c "from llm import *; print('LLM module loaded')"
   python -m py_compile src/monitor.py src/github_utils.py src/llm.py
   ```
 - **Test CLI functionality** with `--help` to verify argument parsing:
@@ -102,7 +102,8 @@ argus/
 │   ├── github_utils.py     # GitHub API wrapper functions
 │   └── llm.py             # DeepSeek AI integration for commit analysis
 ├── .github/workflows/
-│   └── daily-update.yml   # GitHub Actions workflow (runs daily at 2 AM CST)
+│   ├── daily-update.yml   # GitHub Actions workflow (runs daily at 2 AM CST)
+│   └── stale.yml          # Stale issues/PRs management workflow
 ├── requirements.txt        # Python dependencies
 └── README.md              # Comprehensive documentation
 ```
@@ -148,6 +149,7 @@ REPOSITORIES = [
 Alternative to command line arguments:
 - `GITHUB_TOKEN`: GitHub access token
 - `GITHUB_REPOSITORY`: Target repository name  
+- `GITHUB_REPOSITORY_NAME`: Target repository name (fallback used by the code)
 - `LLM_API_KEY`: DeepSeek API key
 - `LLM_MODEL`: LLM model name
 
@@ -193,8 +195,8 @@ Since `--debug` mode still creates issues, use these strategies for safe testing
 ### Debug Commands
 ```bash
 # Test individual module loading
-python -c "from src.github_utils import *; print('GitHub utils loaded')"
-python -c "from src.llm import *; print('LLM module loaded')"
+PYTHONPATH=src python -c "from github_utils import *; print('GitHub utils loaded')"
+PYTHONPATH=src python -c "from llm import *; print('LLM module loaded')"
 
 # Enable verbose logging
 python src/monitor.py --debug --github-token "token" --repo "owner/repo"
@@ -203,16 +205,9 @@ python src/monitor.py --debug --github-token "token" --repo "owner/repo"
 python src/monitor.py --debug --github-token "token" --repo "owner/repo"
 ```
 
-### Safer Testing Approach
-Since `--debug` mode still creates issues, use these strategies for safe testing:
-- **Test with a dedicated test repository** that you own and can safely create issues in
-- **Test module imports and CLI help** without running the full monitoring workflow
-- **Use token validation** by running without the `--repo` parameter to test GitHub connectivity
-- **Validate individual functions** by importing modules in Python REPL
-- **GitHub API errors**: Application handles rate limits and connection issues gracefully
-- **Missing repositories**: Skips inaccessible repos and continues with others
-- **LLM API failures**: Analysis section shows error message but report generation continues
-- **Invalid credentials**: Application exits with clear error messages
+### Notes on Workflows
+- Daily monitoring runs with `--debug` enabled by default and still creates issues (current behavior).
+- A separate `stale.yml` workflow manages stale Issues/PRs daily and can be triggered manually.
 
 ## Important Notes
 - **No build process required** - Pure Python application with no compilation

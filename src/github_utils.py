@@ -175,7 +175,19 @@ def create_issue(repo, title, body, debug=False):
         logging.info(f"成功创建issue: #{issue.number}")
         return issue
     except GithubException as e:
-        logging.error(f"创建issue失败: {e.status} {e.data.get('message')}")
+        error_msg = f"创建issue失败: {e.status}"
+        if hasattr(e, 'data') and e.data:
+            if isinstance(e.data, dict):
+                error_msg += f" {e.data.get('message', '')}"
+                if 'errors' in e.data:
+                    for error in e.data['errors']:
+                        if isinstance(error, dict):
+                            error_msg += f"\n  - {error.get('field', 'unknown')}: {error.get('message', error.get('code', 'unknown error'))}"
+                        else:
+                            error_msg += f"\n  - {error}"
+            else:
+                error_msg += f" {e.data}"
+        logging.error(error_msg)
     except Exception as e:
         logging.error(f"创建issue出错: {str(e)}")
     return None

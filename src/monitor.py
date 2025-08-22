@@ -60,8 +60,8 @@ def main():
         logging.error("无法获取当前仓库，程序终止")
         sys.exit(1)
     
-    issue_content = "# 每日更新报告（" + get_yesterday_date() + "）\n\n"
     for repo_name in REPOSITORIES:
+        issue_content = "# 每日更新报告（" + get_yesterday_date() + "）\n\n"
         logging.info(f"正在获取 {repo_name} 的提交...")
         repo = get_repository(github_client, repo_name)
         if not repo:
@@ -79,15 +79,13 @@ def main():
             logging.debug(analysis_result)
             issue_content += f"## {repo_name} 的LLM分析结果\n\n"
             issue_content += analysis_result
-    
-    if args.debug:
-        logging.debug("\n生成的issue内容预览:") 
-        logging.debug(issue_content)
-
-    # 创建issue
-    yesterday_date = get_yesterday_date()
-    issue_title = f"仓库更新报告 ({yesterday_date})"
-    create_issue(current_repo, issue_title, issue_content)
+        if args.debug:
+            logging.debug("\n生成的issue内容预览:") 
+            logging.debug(issue_content)
+        # 创建issue
+        yesterday_date = get_yesterday_date()
+        issue_title = f"{yesterday_date}: {repo_name} 仓库更新报告"
+        create_issue(current_repo, issue_title, issue_content)
 
 def get_yesterday_date():
     yesterday = datetime.now(TIME_ZONE) - timedelta(days=1)
