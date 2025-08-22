@@ -158,6 +158,49 @@ def create_commit_report(commits):
     
     return content
 
+def validate_and_truncate_content(title, body, max_title_length=256, max_body_length=65536):
+    """验证并截断issue内容以符合GitHub限制
+    
+    Args:
+        title: issue标题
+        body: issue内容  
+        max_title_length: 标题最大长度，GitHub限制为256字符
+        max_body_length: 内容最大长度，GitHub限制为65536字符
+        
+    Returns:
+        tuple: (截断后的标题, 截断后的内容, 是否被截断)
+    """
+    truncated = False
+    
+    # 截断标题
+    if len(title) > max_title_length:
+        title = title[:max_title_length-3] + "..."
+        truncated = True
+        logging.warning(f"标题过长，已截断至 {max_title_length} 字符")
+    
+    # 截断内容
+    if len(body) > max_body_length:
+        # 在合适的位置截断，尽量保持markdown结构
+        truncate_pos = max_body_length - 200  # 留出空间添加截断说明
+        
+        # 尝试在段落边界截断
+        newline_pos = body.rfind('\n\n', 0, truncate_pos)
+        if newline_pos > max_body_length // 2:  # 确保不会截断太多内容
+            truncate_pos = newline_pos
+        
+        truncated_body = body[:truncate_pos]
+        truncated_body += "\n\n---\n\n**⚠️ 内容过长已截断**\n\n"
+        truncated_body += f"原始内容长度: {len(body)} 字符\n"
+        truncated_body += f"截断后长度: {len(truncated_body)} 字符\n\n"
+        truncated_body += "完整内容请查看 GitHub Actions 运行日志。"
+        
+        original_length = len(body)
+        body = truncated_body
+        truncated = True
+        logging.warning(f"内容过长，已从 {original_length} 字符截断至 {len(body)} 字符")
+    
+    return title, body, truncated
+
 def create_issue(repo, title, body, debug=False):
     """创建issue
     
@@ -171,11 +214,39 @@ def create_issue(repo, title, body, debug=False):
         Issue: 创建的issue实例，如果失败则返回None
     """
     try:
-        issue = repo.create_issue(title=title, body=body)
+        # 验证并截断内容
+        validated_title, validated_body, was_truncated = validate_and_truncate_content(title, body)
+        
+        # 记录内容长度用于调试
+        logging.debug(f"Issue标题长度: {len(validated_title)}")
+        logging.debug(f"Issue内容长度: {len(validated_body)}")
+        if was_truncated:
+            logging.info("内容已截断以符合GitHub限制")
+        
+        issue = repo.create_issue(title=validated_title, body=validated_body)
         logging.info(f"成功创建issue: #{issue.number}")
         return issue
     except GithubException as e:
-        logging.error(f"创建issue失败: {e.status} {e.data.get('message')}")
+        # 详细记录GitHub API错误信息
+        error_msg = f"创建issue失败: {e.status}"
+        if hasattr(e, 'data') and e.data:
+            if isinstance(e.data, dict):
+                error_msg += f" {e.data.get('message', '')}"
+                # 记录详细的验证错误
+                if 'errors' in e.data:
+                    for error in e.data['errors']:
+                        if isinstance(error, dict):
+                            error_msg += f"\n  - {error.get('field', 'unknown')}: {error.get('message', error.get('code', 'unknown error'))}"
+                        else:
+                            error_msg += f"\n  - {error}"
+            else:
+                error_msg += f" {e.data}"
+        logging.error(error_msg)
+        
+        # 如果是内容过长错误，提供额外信息
+        if e.status == 422:
+            logging.error(f"可能原因: 内容长度超限 (标题: {len(validated_title)} 字符, 内容: {len(validated_body)} 字符)")
+            
     except Exception as e:
         logging.error(f"创建issue出错: {str(e)}")
     return None
