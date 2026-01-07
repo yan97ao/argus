@@ -174,3 +174,11 @@ cython_debug/
 .pypirc
 
 .vscode/
+
+
+.claude/
+AGENTS.md
+CLAUDE.md
+openspec/
+
+.env

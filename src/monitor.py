@@ -31,7 +31,8 @@ def main():
     parser = argparse.ArgumentParser(description='GitHub仓库更新监控工具')
     parser.add_argument('--github-token', help='GitHub个人访问令牌（PAT）')
     parser.add_argument('--repo', help='目标仓库（格式：owner/repo）')
-    parser.add_argument('--debug', action='store_true', help='启用调试模式')
+    parser.add_argument('--debug', action='store_true', help='启用详细日志输出')
+    parser.add_argument('--dry-run', action='store_true', help='dry-run模式：只输出报告内容，不创建GitHub Issue')
     parser.add_argument('--enable-analysis', action='store_true', help='启用LLM分析模式')
     parser.add_argument('--llm-api-key', help='DeepSeek API密钥')
     parser.add_argument('--llm-model', help='DeepSeek 模型名称，例如: deepseek-chat')
@@ -80,12 +81,24 @@ def main():
             issue_content += f"## {repo_name} 的LLM分析结果\n\n"
             issue_content += analysis_result
         if args.debug:
-            logging.debug("\n生成的issue内容预览:") 
+            logging.debug("\n生成的issue内容预览:")
             logging.debug(issue_content)
-        # 创建issue
+
+        # 准备issue标题（dry-run和创建issue都需要）
         yesterday_date = get_yesterday_date()
         issue_title = f"{yesterday_date}: {repo_name} 仓库更新报告"
-        create_issue(current_repo, issue_title, issue_content)
+
+        # dry-run模式：输出到控制台，不创建issue
+        if args.dry_run:
+            logging.info("=" * 60)
+            logging.info(f"DRY-RUN模式: {repo_name} 报告内容")
+            logging.info("=" * 60)
+            print(issue_content)
+            print("=" * 60)
+            logging.info(f"DRY-RUN模式: 跳过创建 Issue '{issue_title}'")
+        else:
+            # 创建issue
+            create_issue(current_repo, issue_title, issue_content)
 
 def get_yesterday_date():
     yesterday = datetime.now(TIME_ZONE) - timedelta(days=1)

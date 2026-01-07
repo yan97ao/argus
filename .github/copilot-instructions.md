@@ -21,15 +21,25 @@ Always reference these instructions first and fallback to search or bash command
   - `python src/monitor.py --help` -- verify CLI functionality
 
 ### Run the Application
-- **Local debugging mode** (enables verbose logging but still creates GitHub issues):
+- **Dry-run mode** (outputs report to console, does NOT create GitHub issues):
   ```bash
   python src/monitor.py \
-    --debug \
+    --dry-run \
     --github-token "your_github_token" \
     --repo "owner/repo" \
     --enable-analysis \
     --llm-api-key "your_deepseek_key" \
     --llm-model "deepseek-chat"
+  ```
+- **Dry-run with verbose logging** (outputs report and verbose logs, does NOT create issues):
+  ```bash
+  python src/monitor.py \
+    --dry-run \
+    --debug \
+    --github-token "your_github_token" \
+    --repo "owner/repo" \
+    --enable-analysis \
+    --llm-api-key "your_deepseek_key"
   ```
 - **Production mode** (creates GitHub issues):
   ```bash
@@ -76,7 +86,7 @@ Always reference these instructions first and fallback to search or bash command
       print(f'✓ Jobs: {list(workflow.get(\"jobs\", {}).keys())}')
   "
   ```
-- **Run debug mode** to test the workflow with verbose logging (NOTE: currently still creates GitHub issues due to implementation bug):
+- **Run dry-run mode** to test the workflow without creating issues:
   - Monitor logs for successful GitHub API connections
   - Verify commit data retrieval from monitored repositories  
   - Check LLM analysis integration (when enabled)
@@ -87,7 +97,7 @@ Always reference these instructions first and fallback to search or bash command
 - **Import validation**: Test all Python modules to check for syntax errors
 - **CLI validation**: Run the application with `--help` to verify argument parsing
 - **GitHub Actions validation**: Check workflow file syntax with YAML parser
-- **Debug mode testing**: Run the application in debug mode with valid credentials
+- **Dry-run testing**: Run the application in dry-run mode with valid credentials
 - **API connectivity**: Verify the application can connect to GitHub API and retrieve repository data
 - **Report generation**: Test the complete report generation workflow
 - **Output validation**: Check that generated reports contain expected sections and formatting
@@ -138,7 +148,8 @@ REPOSITORIES = [
 |----------|-------------|----------|---------|
 | `--github-token` | GitHub personal access token | Yes | - |
 | `--repo` | Target repository for creating issues (format: owner/repo) | Yes | - |
-| `--debug` | Enable verbose logging (NOTE: still creates issues due to bug) | No | False |
+| `--debug` | Enable verbose logging (DEBUG level) | No | False |
+| `--dry-run` | Output report to console without creating GitHub issues | No | False |
 | `--enable-analysis` | Enable AI analysis using DeepSeek | No | False |
 | `--llm-api-key` | DeepSeek API key (required if --enable-analysis) | No* | - |
 | `--llm-model` | DeepSeek model name | No | deepseek-chat |
@@ -183,13 +194,12 @@ Alternative to command line arguments:
 - **Module import errors**: Verify dependencies are installed: `pip install -r requirements.txt`
 - **Permission denied for issue creation**: Ensure GitHub token has `repo` and `issues` permissions
 - **LLM analysis failures**: Verify DeepSeek API key and check API status
-- **Debug mode still creates issues**: Current implementation has a bug where `--debug` mode still creates GitHub issues. The debug flag only enables verbose logging but doesn't prevent issue creation
 
 ### Safer Testing Approach
-Since `--debug` mode still creates issues, use these strategies for safe testing:
-- **Test with a dedicated test repository** that you own and can safely create issues in
+For safe testing without creating issues:
+- **Use --dry-run mode** to output reports to console without creating GitHub issues
 - **Test module imports and CLI help** without running the full monitoring workflow
-- **Use token validation** by running without the `--repo` parameter to test GitHub connectivity
+- **Use token validation** by running with `--dry-run` to test GitHub connectivity
 - **Validate individual functions** by importing modules in Python REPL
 
 ### Debug Commands
@@ -198,15 +208,18 @@ Since `--debug` mode still creates issues, use these strategies for safe testing
 PYTHONPATH=src python -c "from github_utils import *; print('GitHub utils loaded')"
 PYTHONPATH=src python -c "from llm import *; print('LLM module loaded')"
 
-# Enable verbose logging
-python src/monitor.py --debug --github-token "token" --repo "owner/repo"
+# Dry-run mode (safe, no issues created)
+python src/monitor.py --dry-run --github-token "token" --repo "owner/repo"
 
-# Test without AI analysis
+# Dry-run with verbose logging (safe, no issues created)
+python src/monitor.py --dry-run --debug --github-token "token" --repo "owner/repo"
+
+# Enable verbose logging only (will create issues)
 python src/monitor.py --debug --github-token "token" --repo "owner/repo"
 ```
 
 ### Notes on Workflows
-- Daily monitoring runs with `--debug` enabled by default and still creates issues (current behavior).
+- Daily monitoring runs create issues to record monitoring results.
 - A separate `stale.yml` workflow manages stale Issues/PRs daily and can be triggered manually.
 
 ## Important Notes
@@ -214,8 +227,8 @@ python src/monitor.py --debug --github-token "token" --repo "owner/repo"
 - **No test suite exists** - Validate changes through manual testing scenarios above
 - **No linting configuration** - Follow PEP 8 style guidelines manually
 - **Beijing timezone used** for date calculations (Asia/Shanghai)
-- **Debug mode bug**: `--debug` flag enables verbose logging but still creates GitHub issues
-- **Use test repositories** for validation to avoid creating unwanted issues in production repos
+- **Use --dry-run for testing**: The `--dry-run` flag outputs reports without creating GitHub issues
+- **Use test repositories** for validation when testing issue creation
 - **Virtual environment recommended** to isolate dependencies
 - **NEVER CANCEL long-running operations** - GitHub API calls and dependency installation may take several minutes
 - **Timeout considerations**: Always set timeouts of 60+ seconds for GitHub API operations and 120+ seconds for dependency installation

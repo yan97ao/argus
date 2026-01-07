@@ -158,15 +158,14 @@ def create_commit_report(commits):
     
     return content
 
-def create_issue(repo, title, body, debug=False):
+def create_issue(repo, title, body):
     """创建issue
-    
+
     Args:
         repo: GitHub仓库实例
         title: issue标题
         body: issue内容
-        debug: 是否开启调试模式
-        
+
     Returns:
         Issue: 创建的issue实例，如果失败则返回None
     """
