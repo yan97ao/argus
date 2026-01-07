@@ -158,6 +158,74 @@ def create_commit_report(commits):
     
     return content
 
+def get_report_file_path(repo_name, date):
+    """生成报告文件路径
+
+    Args:
+        repo_name: 仓库名称，格式为"owner/repo"，将提取最后一部分作为目录名
+        date: 日期字符串，格式为"YYYY-MM-DD"
+
+    Returns:
+        str: 报告文件路径，格式为"reports/YYYY/repo-name/YYYY-MM-DD.md"
+    """
+    # 提取仓库名称的最后一部分（如 "vllm-project/vllm" -> "vllm"）
+    repo_short_name = repo_name.split('/')[-1]
+
+    # 从日期字符串中提取年份
+    year = date.split('-')[0]
+
+    # 构建文件路径
+    file_path = f"reports/{year}/{repo_short_name}/{date}.md"
+    return file_path
+
+
+def create_report_file(repo, file_path, content):
+    """创建报告文件并提交到仓库
+
+    Args:
+        repo: GitHub仓库实例
+        file_path: 文件路径，格式为"reports/YYYY/repo-name/YYYY-MM-DD.md"
+        content: 文件内容（Markdown格式）
+
+    Returns:
+        bool: 成功返回True，失败返回False
+    """
+    try:
+        # 提取日期和仓库名用于 commit 消息
+        parts = file_path.split('/')
+        date = parts[-1].replace('.md', '')
+        repo_name = parts[-2]
+
+        commit_message = f"Report: {repo_name} - {date}"
+
+        # 创建文件并提交
+        repo.create_file(
+            path=file_path,
+            message=commit_message,
+            content=content,
+            branch="master"
+        )
+        logging.info(f"成功创建报告文件: {file_path}")
+        return True
+    except GithubException as e:
+        error_msg = f"创建报告文件失败: {e.status}"
+        if hasattr(e, 'data') and e.data:
+            if isinstance(e.data, dict):
+                error_msg += f" {e.data.get('message', '')}"
+                if 'errors' in e.data:
+                    for error in e.data['errors']:
+                        if isinstance(error, dict):
+                            error_msg += f"\n  - {error.get('field', 'unknown')}: {error.get('message', error.get('code', 'unknown error'))}"
+                        else:
+                            error_msg += f"\n  - {error}"
+            else:
+                error_msg += f" {e.data}"
+        logging.error(error_msg)
+    except Exception as e:
+        logging.error(f"创建报告文件出错: {str(e)}")
+    return False
+
+
 def create_issue(repo, title, body):
     """创建issue
 

@@ -8,11 +8,12 @@ from datetime import datetime, timedelta
 import logging
 
 from github_utils import (
-    init_github_client, 
-    get_repository, 
-    get_commits_lastday, 
-    create_commit_report, 
-    create_issue,
+    init_github_client,
+    get_repository,
+    get_commits_lastday,
+    create_commit_report,
+    create_report_file,
+    get_report_file_path,
     TIME_ZONE
 )
 
@@ -97,14 +98,14 @@ def main():
         logging.error("无法初始化GitHub客户端，程序终止")
         sys.exit(1)
 
-    # 获取当前仓库（用于创建issue）
+    # 获取当前仓库（用于提交报告文件）
     current_repo = get_repository(github_client, repository)
     if not current_repo:
         logging.error("无法获取当前仓库，程序终止")
         sys.exit(1)
-    
+
     for repo_name in REPOSITORIES:
-        issue_content = "# 每日更新报告（" + get_yesterday_date() + "）\n\n"
+        report_content = "# 每日更新报告（" + get_yesterday_date() + "）\n\n"
         logging.info(f"正在获取 {repo_name} 的提交...")
         repo = get_repository(github_client, repo_name)
         if not repo:
@@ -113,8 +114,8 @@ def main():
         logging.info(f"仓库信息: {repo.full_name}, 星标: {repo.stargazers_count}")
         commits = get_commits_lastday(repo)
         logging.info(f"成功获取 {repo_name} 的 {len(commits)} 个提交")
-        issue_content += f"## {repo_name}\n\n"
-        issue_content += create_commit_report(commits)
+        report_content += f"## {repo_name}\n\n"
+        report_content += create_commit_report(commits)
         if args.enable_analysis:
             logging.info("正在使用LLM分析提交...")
             # 从环境变量读取 LLM 配置
@@ -123,27 +124,27 @@ def main():
             analysis_result = analyze_commit(commits, api_key=llm_api_key, model=llm_model)
             logging.debug("LLM分析结果:")
             logging.debug(analysis_result)
-            issue_content += f"## {repo_name} 的LLM分析结果\n\n"
-            issue_content += analysis_result
+            report_content += f"## {repo_name} 的LLM分析结果\n\n"
+            report_content += analysis_result
         if args.debug:
-            logging.debug("\n生成的issue内容预览:")
-            logging.debug(issue_content)
+            logging.debug("\n生成的报告内容预览:")
+            logging.debug(report_content)
 
-        # 准备issue标题（dry-run和创建issue都需要）
+        # 准备报告文件路径
         yesterday_date = get_yesterday_date()
-        issue_title = f"{yesterday_date}: {repo_name} 仓库更新报告"
+        report_file_path = get_report_file_path(repo_name, yesterday_date)
 
-        # dry-run模式：输出到控制台，不创建issue
+        # dry-run模式：输出到控制台，不创建文件
         if args.dry_run:
             logging.info("=" * 60)
             logging.info(f"DRY-RUN模式: {repo_name} 报告内容")
             logging.info("=" * 60)
-            print(issue_content)
+            print(report_content)
             print("=" * 60)
-            logging.info(f"DRY-RUN模式: 跳过创建 Issue '{issue_title}'")
+            logging.info(f"DRY-RUN模式: 跳过创建报告文件 '{report_file_path}'")
         else:
-            # 创建issue
-            create_issue(current_repo, issue_title, issue_content)
+            # 创建报告文件
+            create_report_file(current_repo, report_file_path, report_content)
 
 def get_yesterday_date():
     yesterday = datetime.now(TIME_ZONE) - timedelta(days=1)

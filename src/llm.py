@@ -26,6 +26,7 @@ def analyze_commit(commits, api_key=None, model=None):
 
     result = ""
     for commit in commits:
+        sleep(10)  # 避免请求过快被限流
         logging.info(f"分析提交: {commit.sha}")
         system_prompt = build_system_prompt()
         user_prompt = build_user_prompt(commit)
