@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import os
 import sys
 from datetime import datetime, timedelta
 import logging
@@ -26,16 +27,53 @@ REPOSITORIES = [
     "ai-dynamo/dynamo",
 ]
 
+# 必需的环境变量列表
+REQUIRED_ENV_VARS = ["TOKEN", "REPOSITORY", "LLM_API_KEY", "LLM_MODEL", "LLM_BASE_URL"]
+
+
+def check_required_env_vars():
+    """检查所有必需的环境变量是否已设置
+
+    Returns:
+        bool: 如果所有变量都已设置则返回 True，否则返回 False
+    """
+    missing_vars = []
+    set_vars = []
+
+    for var in REQUIRED_ENV_VARS:
+        value = os.getenv(var)
+        if value is None or value.strip() == "":
+            missing_vars.append(var)
+        else:
+            set_vars.append(var)
+
+    if missing_vars:
+        print("=" * 60, file=sys.stderr)
+        print("错误：缺少必需的环境变量", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        print("\n以下环境变量必须设置：", file=sys.stderr)
+        for var in REQUIRED_ENV_VARS:
+            if var in missing_vars:
+                print(f"  ✗ {var}", file=sys.stderr)
+            else:
+                print(f"  ✓ {var}", file=sys.stderr)
+        print("\n请设置这些环境变量后重试。", file=sys.stderr)
+        print("参考 .env.example 文件或使用：source .env\n", file=sys.stderr)
+        return False
+
+    return True
+
+
 def main():
-    # 解析命令行参数
+    # 首先检查必需的环境变量
+    if not check_required_env_vars():
+        sys.exit(1)
+
+    # 解析命令行参数（仅保留行为控制参数）
     parser = argparse.ArgumentParser(description='GitHub仓库更新监控工具')
-    parser.add_argument('--github-token', help='GitHub个人访问令牌（PAT）')
-    parser.add_argument('--repo', help='目标仓库（格式：owner/repo）')
     parser.add_argument('--debug', action='store_true', help='启用详细日志输出')
     parser.add_argument('--dry-run', action='store_true', help='dry-run模式：只输出报告内容，不创建GitHub Issue')
     parser.add_argument('--enable-analysis', action='store_true', help='启用LLM分析模式')
-    parser.add_argument('--llm-api-key', help='DeepSeek API密钥')
-    parser.add_argument('--llm-model', help='DeepSeek 模型名称，例如: deepseek-chat')
     args = parser.parse_args()
 
     # 设置调试模式
@@ -49,14 +87,18 @@ def main():
                         handlers=[logging.StreamHandler()])
     logging.debug("调试模式已启用")
 
+    # 从环境变量读取配置
+    token = os.getenv("TOKEN")
+    repository = os.getenv("REPOSITORY")
+
     # 初始化GitHub客户端
-    github_client = init_github_client(token=args.github_token)
+    github_client = init_github_client(token=token)
     if not github_client:
         logging.error("无法初始化GitHub客户端，程序终止")
         sys.exit(1)
-    
+
     # 获取当前仓库（用于创建issue）
-    current_repo = get_repository(github_client, args.repo)
+    current_repo = get_repository(github_client, repository)
     if not current_repo:
         logging.error("无法获取当前仓库，程序终止")
         sys.exit(1)
@@ -75,7 +117,10 @@ def main():
         issue_content += create_commit_report(commits)
         if args.enable_analysis:
             logging.info("正在使用LLM分析提交...")
-            analysis_result = analyze_commit(commits, api_key=args.llm_api_key, model=args.llm_model)
+            # 从环境变量读取 LLM 配置
+            llm_api_key = os.getenv("LLM_API_KEY")
+            llm_model = os.getenv("LLM_MODEL")
+            analysis_result = analyze_commit(commits, api_key=llm_api_key, model=llm_model)
             logging.debug("LLM分析结果:")
             logging.debug(analysis_result)
             issue_content += f"## {repo_name} 的LLM分析结果\n\n"

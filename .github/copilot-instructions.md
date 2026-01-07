@@ -21,40 +21,42 @@ Always reference these instructions first and fallback to search or bash command
   - `python src/monitor.py --help` -- verify CLI functionality
 
 ### Run the Application
+**IMPORTANT**: All configuration must be provided via environment variables. The application will fail to start if any required environment variable is missing.
+
+- **Set up environment variables**:
+  ```bash
+  # Copy and configure the environment file
+  cp .env.example .env
+  # Edit .env with your actual values
+  # Then load it
+  source .env
+  ```
+
 - **Dry-run mode** (outputs report to console, does NOT create GitHub issues):
   ```bash
-  python src/monitor.py \
-    --dry-run \
-    --github-token "your_github_token" \
-    --repo "owner/repo" \
-    --enable-analysis \
-    --llm-api-key "your_deepseek_key" \
-    --llm-model "deepseek-chat"
+  source .env  # Load environment variables first
+  python src/monitor.py --dry-run --enable-analysis
   ```
+
 - **Dry-run with verbose logging** (outputs report and verbose logs, does NOT create issues):
   ```bash
-  python src/monitor.py \
-    --dry-run \
-    --debug \
-    --github-token "your_github_token" \
-    --repo "owner/repo" \
-    --enable-analysis \
-    --llm-api-key "your_deepseek_key"
+  source .env  # Load environment variables first
+  python src/monitor.py --dry-run --debug --enable-analysis
   ```
+
 - **Production mode** (creates GitHub issues):
   ```bash
-  python src/monitor.py \
-    --github-token "your_github_token" \
-    --repo "owner/repo" \
-    --enable-analysis \
-    --llm-api-key "your_deepseek_key"
+  source .env  # Load environment variables first
+  python src/monitor.py --enable-analysis
   ```
 
 ### GitHub Actions Deployment
 - Configure repository secrets in `Settings` → `Secrets and variables` → `Actions`:
-  - `TOKEN`: GitHub personal access token (requires repo and issues permissions)
-  - `LLM_API_KEY`: DeepSeek API key for AI analysis
-  - `LLM_MODEL`: (optional) Model name, defaults to `deepseek-chat`
+  - `TOKEN`: GitHub personal access token (requires repo and issues permissions) - **REQUIRED**
+  - `REPOSITORY`: Target repository for creating issues (format: owner/repo) - **REQUIRED**
+  - `LLM_API_KEY`: DeepSeek API key for AI analysis - **REQUIRED**
+  - `LLM_MODEL`: LLM model name (e.g., `deepseek-chat`) - **REQUIRED**
+  - `LLM_BASE_URL`: LLM API endpoint (e.g., `https://api.deepseek.com/chat/completions`) - **REQUIRED**
 - Enable GitHub Actions in `Settings` → `Actions` → `General`
 - Workflow runs daily at 2 AM CST (18:00 UTC) or can be triggered manually
 
@@ -146,23 +148,22 @@ REPOSITORIES = [
 ### Command Line Arguments
 | Argument | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `--github-token` | GitHub personal access token | Yes | - |
-| `--repo` | Target repository for creating issues (format: owner/repo) | Yes | - |
 | `--debug` | Enable verbose logging (DEBUG level) | No | False |
 | `--dry-run` | Output report to console without creating GitHub issues | No | False |
 | `--enable-analysis` | Enable AI analysis using DeepSeek | No | False |
-| `--llm-api-key` | DeepSeek API key (required if --enable-analysis) | No* | - |
-| `--llm-model` | DeepSeek model name | No | deepseek-chat |
 
-*Required when `--enable-analysis` is enabled
+### Environment Variables (Required)
+The following environment variables MUST be set before running the application:
 
-### Environment Variables
-Alternative to command line arguments:
-- `GITHUB_TOKEN`: GitHub access token
-- `GITHUB_REPOSITORY`: Target repository name  
-- `GITHUB_REPOSITORY_NAME`: Target repository name (fallback used by the code)
-- `LLM_API_KEY`: DeepSeek API key
-- `LLM_MODEL`: LLM model name
+| Variable | Description | Required | Example |
+|----------|-------------|----------|---------|
+| `TOKEN` | GitHub personal access token (needs repo and issues permissions) | ✅ Yes | `github_pat_xxxxx` |
+| `REPOSITORY` | Target repository for creating issues (format: owner/repo) | ✅ Yes | `owner/repo` |
+| `LLM_API_KEY` | DeepSeek API key for AI analysis | ✅ Yes | `sk-xxxxx` |
+| `LLM_MODEL` | LLM model name | ✅ Yes | `deepseek-chat` |
+| `LLM_BASE_URL` | LLM API endpoint | ✅ Yes | `https://api.deepseek.com/chat/completions` |
+
+**IMPORTANT**: The application will fail immediately with a clear error message if any of these environment variables are not set. Use `source .env` to load them from a file, or set them manually.
 
 ## Timing and Performance
 
@@ -208,14 +209,20 @@ For safe testing without creating issues:
 PYTHONPATH=src python -c "from github_utils import *; print('GitHub utils loaded')"
 PYTHONPATH=src python -c "from llm import *; print('LLM module loaded')"
 
-# Dry-run mode (safe, no issues created)
-python src/monitor.py --dry-run --github-token "token" --repo "owner/repo"
+# Verify CLI functionality (safe, does not create issues)
+python src/monitor.py --help
 
-# Dry-run with verbose logging (safe, no issues created)
-python src/monitor.py --dry-run --debug --github-token "token" --repo "owner/repo"
+# Dry-run mode (requires environment variables, safe, no issues created)
+source .env
+python src/monitor.py --dry-run
 
-# Enable verbose logging only (will create issues)
-python src/monitor.py --debug --github-token "token" --repo "owner/repo"
+# Dry-run with verbose logging (requires environment variables, safe, no issues created)
+source .env
+python src/monitor.py --dry-run --debug
+
+# Enable verbose logging (requires environment variables, will create issues)
+source .env
+python src/monitor.py --debug
 ```
 
 ### Notes on Workflows

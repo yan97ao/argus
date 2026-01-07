@@ -6,26 +6,23 @@ from typing import List, Dict, Any, Optional
 
 def analyze_commit(commits, api_key=None, model=None):
     """分析提交内容，使用LLM提供洞察
-    
+
     Args:
         commits: GitHub提交对象列表
-        api_key: API密钥，优先使用参数传入的值
-        model: 模型名称，优先使用参数传入的值
-        
+        api_key: API密钥（如果为None，从LLM_API_KEY环境变量读取）
+        model: 模型名称（如果为None，从LLM_MODEL环境变量读取）
+
     Returns:
         str: LLM分析结果
     """
     if not commits:
         return "没有提交可供分析"
-    
-    if api_key is None:
-        error_msg = "未提供大模型API密钥，请通过--llm-api-key参数或LLM_API_KEY环境变量设置"
-        logging.error(error_msg)
-        return error_msg
 
+    # 从环境变量读取配置（如果参数未提供）
+    if api_key is None:
+        api_key = os.getenv("LLM_API_KEY")
     if model is None:
-        logging.warning("未提供大模型名称，使用默认模型: deepseek-chat")
-        model = "deepseek-chat"
+        model = os.getenv("LLM_MODEL")
 
     result = ""
     for commit in commits:
@@ -121,17 +118,24 @@ def build_user_prompt(commit):
 
 def call_llm(system_prompt: str, user_prompt: str, api_key: str = None, model: str = None) -> str:
     """调用LLM API获取LLM回复
-    
+
     Args:
-        prompt: 提示词
-        api_key: API密钥，优先使用参数传入的值
-        model: 模型名称，优先使用参数传入的值
-        
+        system_prompt: 系统提示词
+        user_prompt: 用户提示词
+        api_key: API密钥（如果为None，从LLM_API_KEY环境变量读取）
+        model: 模型名称（如果为None，从LLM_MODEL环境变量读取）
+
     Returns:
         str: LLM回复内容
-    """    
-    # LLM API端点
-    api_url = "https://api.deepseek.com/chat/completions"
+    """
+    # 从环境变量读取配置（如果参数未提供）
+    if api_key is None:
+        api_key = os.getenv("LLM_API_KEY")
+    if model is None:
+        model = os.getenv("LLM_MODEL")
+
+    # LLM API端点（从环境变量读取）
+    api_url = os.getenv("LLM_BASE_URL")
     
     # 请求头
     headers = {

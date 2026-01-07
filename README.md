@@ -70,39 +70,67 @@ source .venv/bin/activate  # Linux/Mac
 # 3. 安装依赖
 pip install -r requirements.txt
 
-# 4. 运行调试模式
-python src/monitor.py \
-  --debug \
-  --github-token "你的GitHub Token" \
-  --enable-analysis \
-  --repo "你的用户名/argus" \
-  --llm-api-key "你的DeepSeek API密钥" \
-  --llm-model "deepseek-chat"
+# 4. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，填入你的配置
+
+# 5. 加载环境变量并运行
+source .env
+python src/monitor.py --debug --enable-analysis
 ```
 
 ## ⚙️ 配置选项
 
-### 命令行参数
+### 环境变量（必需）
+
+程序要求以下五个环境变量必须设置，任何变量缺失都会导致程序启动失败：
+
+| 环境变量 | 说明 | 必需 | 示例值 |
+|---------|------|------|--------|
+| `TOKEN` | GitHub 访问令牌（需要 repo 和 issues 权限） | ✅ 是 | `github_pat_xxxxx` |
+| `REPOSITORY` | 目标仓库（格式：owner/repo） | ✅ 是 | `owner/repo` |
+| `LLM_API_KEY` | LLM API 密钥 | ✅ 是 | `nvapi-xxxxx` |
+| `LLM_MODEL` | LLM 模型名称 | ✅ 是 | `deepseek-chat` |
+| `LLM_BASE_URL` | LLM API 端点 | ✅ 是 | `https://api.deepseek.com/chat/completions` |
+
+### 命令行参数（行为控制）
 
 | 参数 | 说明 | 必需 | 默认值 |
 |------|------|------|--------|
-| `--github-token` | GitHub个人访问令牌 | 是 | - |
-| `--repo` | 目标仓库（格式：owner/repo） | 是 | - |
 | `--debug` | 启用详细日志输出（DEBUG级别） | 否 | False |
 | `--dry-run` | dry-run模式：只输出报告到控制台，不创建GitHub Issue | 否 | False |
 | `--enable-analysis` | 启用LLM分析功能 | 否 | False |
-| `--llm-api-key` | DeepSeek API密钥 | 否* | - |
-| `--llm-model` | 指定LLM模型名称 | 否 | deepseek-chat |
 
-*注：启用LLM分析时必需
+### GitHub Secrets 配置
 
-### 环境变量
+在 GitHub 仓库的 `Settings` → `Secrets and variables` → `Actions` 中添加以下 secrets：
 
-- `GITHUB_TOKEN`: GitHub访问令牌
-- `GITHUB_REPOSITORY`: 目标仓库名称
-- `GITHUB_REPOSITORY_NAME`: 目标仓库名称（备用）
-- `LLM_API_KEY`: DeepSeek API密钥
-- `LLM_MODEL`: LLM模型名称
+- `TOKEN`: GitHub 访问令牌
+- `REPOSITORY`: 目标仓库（或使用 `${{ github.repository }}`）
+- `LLM_API_KEY`: LLM API 密钥
+- `LLM_MODEL`: LLM 模型名称
+- `LLM_BASE_URL`: LLM API 端点
+
+### 环境变量加载方式
+
+```bash
+# 方式 1：使用 .env 文件（推荐）
+source .env
+python src/monitor.py --debug --enable-analysis
+
+# 方式 2：手动设置环境变量
+export TOKEN="your_token"
+export REPOSITORY="owner/repo"
+export LLM_API_KEY="your_api_key"
+export LLM_MODEL="deepseek-chat"
+export LLM_BASE_URL="https://api.deepseek.com/chat/completions"
+python src/monitor.py --debug --enable-analysis
+
+# 方式 3：使用 python-dotenv
+pip install python-dotenv
+python -c "from dotenv import load_dotenv; load_dotenv()"
+python src/monitor.py --debug --enable-analysis
+```
 
 ### 自定义监控仓库
 
@@ -229,14 +257,17 @@ PYTHONPATH=src python -c "from llm import *; print('LLM module loaded')"
 # 验证CLI功能（安全，不会创建Issue）
 python src/monitor.py --help
 
-# Dry-run模式（安全，只输出报告，不创建Issue）
-python src/monitor.py --dry-run --github-token "token" --repo "your-repo/test"
+# Dry-run模式（需要先设置环境变量，安全，只输出报告，不创建Issue）
+source .env
+python src/monitor.py --dry-run
 
-# Dry-run + 详细日志（安全，输出详细日志和报告，不创建Issue）
-python src/monitor.py --dry-run --debug --github-token "token" --repo "your-repo/test"
+# Dry-run + 详细日志（需要先设置环境变量，安全，输出详细日志和报告，不创建Issue）
+source .env
+python src/monitor.py --dry-run --debug
 
-# 启用详细日志（会创建Issue，建议在测试仓库使用）
-python src/monitor.py --debug --github-token "token" --repo "your-test-repo/test"
+# 启用详细日志（需要先设置环境变量，会创建Issue，建议在测试仓库使用）
+source .env
+python src/monitor.py --debug
 ```
 
 ## 📄 许可证

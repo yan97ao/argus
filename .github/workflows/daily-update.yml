@@ -17,18 +17,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 获取完整的git历史
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
+
       - name: Run monitor script
         env:
-          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
-        run: python src/monitor.py --debug --github-token "${{ secrets.TOKEN }}" --enable-analysis --repo "${{ github.repository }}" --llm-api-key "${{ secrets.LLM_API_KEY }}" --llm-model "${{ secrets.LLM_MODEL }}" 
+          TOKEN: ${{ secrets.TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+        run: python src/monitor.py --debug --enable-analysis
