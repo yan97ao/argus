@@ -7,8 +7,6 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from importance_scorer import calculate_importance_score, get_importance_emoji
 
-# 存储已使用的锚点，用于检测重复
-_used_anchors: Dict[str, List[str]] = {}
 
 def analyze_commit(commits, repo_context=None, api_key=None, model=None, config=None):
     """分析提交内容，使用LLM提供洞察

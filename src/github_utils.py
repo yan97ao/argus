@@ -13,9 +13,6 @@ from github.GithubException import GithubException
 
 TIME_ZONE = pytz.timezone('Asia/Shanghai')
 
-# 存储已使用的锚点，用于检测重复
-_used_anchors: Dict[str, List[str]] = {}
-
 def init_github_client(token=None):
     """初始化GitHub客户端
 
@@ -307,56 +304,33 @@ def create_issue(repo, title, body):
 # 报告格式增强函数
 # ============================================================================
 
-def sanitize_commit_title(message: str, sha: str = "") -> Tuple[str, str]:
-    """清理 commit message 标题以用作 Markdown 锚点
+def get_commit_title_and_anchor(message: str, sha: str = "") -> Tuple[str, str]:
+    """获取 commit message 标题和锚点 ID
+
+    保留原始标题（不截断、不清理），使用 SHA 短哈希作为锚点。
 
     Args:
         message: 完整的 commit message
         sha: commit SHA（用于生成唯一锚点）
 
     Returns:
-        (sanitized_title, anchor_id): 清理后的标题和锚点ID
+        (title, anchor_id): 原始标题和锚点ID
     """
     if not message:
         message = "无标题提交"
 
-    # 提取第一行作为标题
+    # 提取第一行作为标题（保留原始格式）
     title = message.split('\n')[0].strip()
 
-    # 限制最大长度（80字符）
-    if len(title) > 80:
-        title = title[:77] + "..."
+    # 使用 SHA 短哈希作为锚点 ID
+    anchor_id = sha[:7] if sha else "commit"
 
-    # 清理特殊字符
-    # 移除或替换：# @ [ ] ( ) 等特殊字符
-    # 保留：字母、数字、常见标点（. , - _ : 等）
-    sanitized = re.sub(r'[#@()[\]{}]', '', title)
-    sanitized = re.sub(r'\s+', '-', sanitized)  # 空格替换为连字符
-
-    # 生成锚点ID（转换为小写，移除特殊字符）
-    anchor_id = re.sub(r'[^\w\u4e00-\u9fff-]', '-', sanitized.lower())
-    anchor_id = re.sub(r'-+', '-', anchor_id).strip('-')
-
-    # 如果锚点为空或太短，使用SHA
-    if not anchor_id or len(anchor_id) < 3:
-        anchor_id = sha[:7] if sha else "commit"
-
-    # 确保锚点唯一（简单处理：如果重复，添加SHA后缀）
-    # 注意：这里使用全局变量跟踪，实际使用时需要在外部管理
-    global _used_anchors
-    if anchor_id not in _used_anchors:
-        _used_anchors[anchor_id] = []
-    _used_anchors[anchor_id].append(sha[:7])
-
-    if len(_used_anchors[anchor_id]) > 1:
-        anchor_id = f"{anchor_id}-{sha[:7]}"
-
-    logging.debug(f"标题清理: '{title}' -> '{sanitized}' (锚点: #{anchor_id})")
-    return sanitized, anchor_id
+    logging.debug(f"标题: '{title}' (锚点: #{anchor_id})")
+    return title, anchor_id
 
 
 def format_commit_header(commit, analysis_result: Optional[Dict] = None) -> str:
-    """格式化提交标题（使用 commit message 标题 + SHA 副标题）
+    """格式化提交标题（使用原始 commit message 标题 + SHA 副标题）
 
     Args:
         commit: GitHub commit 对象
@@ -369,11 +343,11 @@ def format_commit_header(commit, analysis_result: Optional[Dict] = None) -> str:
     sha = commit.sha[:7]
     url = commit.html_url
 
-    # 清理标题
-    sanitized_title, anchor_id = sanitize_commit_title(message, sha)
+    # 获取原始标题和锚点
+    title, anchor_id = get_commit_title_and_anchor(message, sha)
 
-    # 生成标题
-    header = f"### {sanitized_title}\n"
+    # 生成标题（使用原始标题）
+    header = f"### {title}\n"
     header += f"**SHA**: `{sha}` | 🔗 [查看提交]({url})\n"
 
     # 如果有分析错误，添加错误提示
@@ -506,6 +480,8 @@ def format_grouped_analysis(groups: Dict) -> str:
 def create_toc(commits_with_analysis: List[Dict], repo_name: str) -> str:
     """生成目录 (TOC)
 
+    使用 commit SHA 作为锚点，保留原始标题用于显示。
+
     Args:
         commits_with_analysis: 包含 commit 和 importance_info 的字典列表
         repo_name: 仓库名称
@@ -539,12 +515,13 @@ def create_toc(commits_with_analysis: List[Dict], repo_name: str) -> str:
                 message = commit.commit.message
                 sha = commit.sha[:7]
 
-                # 清理标题生成锚点
-                _, anchor_id = sanitize_commit_title(message, sha)
+                # 使用原始标题，可选截断显示
                 title = message.split('\n')[0].strip()
-                if len(title) > 50:
-                    title = title[:47] + "..."
+                # 目录中的标题如果太长，使用省略号截断
+                if len(title) > 60:
+                    title = title[:57] + "..."
 
-                toc += f"    - [{title}](#{anchor_id})\n"
+                # 使用 SHA 作为锚点
+                toc += f"    - [{title}](#{sha})\n"
 
     return toc
