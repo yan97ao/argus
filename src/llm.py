@@ -44,9 +44,11 @@ def analyze_commit(commits, repo_context=None, api_key=None, model=None, config=
 
         # 调用LLM进行分析（带重试）
         max_retries = 3
+        success = False
+        last_response_time = None
         for attempt in range(max_retries):
             try:
-                output, response_time = call_llm(
+                output, last_response_time = call_llm(
                     system_prompt, user_prompt,
                     api_key=api_key, model=model,
                     return_response_time=True
@@ -59,12 +61,13 @@ def analyze_commit(commits, repo_context=None, api_key=None, model=None, config=
                     'analysis': output,
                     'importance_info': importance_info
                 })
+                success = True
                 break
             except Exception as e:
                 if attempt < max_retries - 1:
                     # 检查是否是限流错误
                     is_rate_limited = "429" in str(e) or "rate limit" in str(e).lower()
-                    delay = smart_rate_limit(response_time if 'response_time' in locals() else None,
+                    delay = smart_rate_limit(last_response_time,
                                              is_rate_limited,
                                              attempt + 1)
                     logging.warning(f"LLM调用失败（第{attempt + 1}次尝试）: {str(e)}, {delay}秒后重试...")
@@ -79,9 +82,10 @@ def analyze_commit(commits, repo_context=None, api_key=None, model=None, config=
                         'error': error_msg
                     })
                     break
-        else:
-            # 智能速率控制延迟（正常情况）
-            delay = smart_rate_limit(None, False, 0)
+
+        # 智能速率控制延迟（成功后或失败后）
+        if success:
+            delay = smart_rate_limit(last_response_time, False, 0)
             if delay > 0:
                 sleep(delay)
 
@@ -250,12 +254,18 @@ def smart_rate_limit(response_time: Optional[float], is_rate_limited: bool, atte
         logging.warning(f"检测到限流，使用指数退避: {backoff}秒")
         return backoff
     elif response_time is not None:
-        if response_time < 1.0:
-            # 响应快，加速到5秒
+        if response_time >= 10.0:
+            # 响应时间>=10秒，无需额外退避
+            logging.info(f"响应时间{response_time:.1f}秒>=10秒，无需额外退避")
+            return 0
+        elif response_time < 5.0:
+            # 响应快，延迟5秒
             return 5
-        elif response_time > 5.0:
-            # 响应慢，减速到15秒
-            return 15
+        else:
+            # 5~10秒：补齐至10秒
+            delay = 10 - int(response_time)
+            logging.info(f"响应时间{response_time:.1f}秒，补齐延迟{delay}秒")
+            return delay
 
     # 默认延迟
     return 10
