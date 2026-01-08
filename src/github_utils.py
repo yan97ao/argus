@@ -196,6 +196,20 @@ def create_report_file(repo, file_path, content):
         bool: 成功返回True，失败返回False
     """
     try:
+        # 检查文件是否已存在
+        file_sha = None
+        try:
+            existing_file = repo.get_contents(file_path, ref="master")
+            file_sha = existing_file.sha
+            logging.info(f"文件已存在，将覆盖: {file_path}")
+        except GithubException as check_error:
+            if check_error.status == 404:
+                # 文件不存在，这是正常情况
+                logging.info(f"创建新文件: {file_path}")
+            else:
+                # 其他错误，向上抛出
+                raise
+
         # 提取日期和仓库名用于 commit 消息
         parts = file_path.split('/')
         date = parts[-1].replace('.md', '')
@@ -203,14 +217,26 @@ def create_report_file(repo, file_path, content):
 
         commit_message = f"Report: {repo_name} - {date}"
 
-        # 创建文件并提交
-        repo.create_file(
-            path=file_path,
-            message=commit_message,
-            content=content,
-            branch="master"
-        )
-        logging.info(f"成功创建报告文件: {file_path}")
+        # 创建或更新文件
+        if file_sha:
+            # 文件已存在，使用 update_file
+            repo.update_file(
+                path=file_path,
+                message=commit_message,
+                content=content,
+                sha=file_sha,
+                branch="master"
+            )
+        else:
+            # 文件不存在，使用 create_file
+            repo.create_file(
+                path=file_path,
+                message=commit_message,
+                content=content,
+                branch="master"
+            )
+
+        logging.info(f"成功{'更新' if file_sha else '创建'}报告文件: {file_path}")
         return True
     except GithubException as e:
         error_msg = f"创建报告文件失败: {e.status}"
