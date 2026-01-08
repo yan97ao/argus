@@ -41,7 +41,9 @@ REPOSITORIES = [
 ]
 
 # 必需的环境变量列表
-REQUIRED_ENV_VARS = ["TOKEN", "REPOSITORY", "LLM_API_KEY", "LLM_MODEL", "LLM_BASE_URL"]
+# GITHUB_TOKEN 在 GitHub Actions 中自动提供，不需要用户配置
+# TOKEN 可选用于本地开发环境
+REQUIRED_ENV_VARS = ["REPOSITORY", "LLM_API_KEY", "LLM_MODEL", "LLM_BASE_URL"]
 
 
 def check_required_env_vars():
@@ -106,11 +108,11 @@ def main():
     logging.debug(f"配置已加载: {args.config or '默认配置'}")
 
     # 从环境变量读取配置
-    token = os.getenv("TOKEN")
     repository = os.getenv("REPOSITORY")
 
     # 初始化GitHub客户端
-    github_client = init_github_client(token=token)
+    # GITHUB_TOKEN 由 GitHub Actions 自动提供，或从 TOKEN 环境变量读取（本地开发）
+    github_client = init_github_client()
     if not github_client:
         logging.error("无法初始化GitHub客户端，程序终止")
         sys.exit(1)

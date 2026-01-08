@@ -18,24 +18,36 @@ _used_anchors: Dict[str, List[str]] = {}
 
 def init_github_client(token=None):
     """初始化GitHub客户端
-    
+
+    Token 优先级：
+    1. GITHUB_TOKEN (GitHub Actions 环境自动提供)
+    2. TOKEN (本地开发环境)
+    3. 无认证模式（受 API 速率限制）
+
     Args:
-        token: GitHub个人访问令牌
-        
+        token: GitHub个人访问令牌（可选，向后兼容）
+
     Returns:
         Github: GitHub客户端实例
     """
     try:
-        # 优先使用传入的token
-        if token:
+        # 优先使用 GITHUB_TOKEN（GitHub Actions 自动提供）
+        github_token = os.getenv('GITHUB_TOKEN')
+        if github_token:
+            g = Github(github_token)
+            logging.debug("使用 GITHUB_TOKEN 初始化客户端")
+        # 其次使用传入的 token 或环境变量 TOKEN（本地开发）
+        elif token:
             g = Github(token)
-        # 其次使用环境变量中的token
-        elif os.getenv('GITHUB_TOKEN'):
-            g = Github(os.getenv('GITHUB_TOKEN'))
+            logging.debug("使用传入的 TOKEN 初始化客户端")
+        elif os.getenv('TOKEN'):
+            g = Github(os.getenv('TOKEN'))
+            logging.debug("使用环境变量 TOKEN 初始化客户端")
         # 最后使用无认证方式
         else:
             g = Github()
-            
+            logging.debug("使用无认证模式初始化客户端（受 API 速率限制）")
+
         # 测试API连接
         rate_limit = g.get_rate_limit()
         logging.debug(f"API速率限制: {rate_limit.core.limit}, 剩余: {rate_limit.core.remaining}")
