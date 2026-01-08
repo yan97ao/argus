@@ -1,0 +1,91 @@
+# Argus 配置文件示例
+# 复制此文件为 config.yaml 并根据需要调整配置
+
+# 重要性评分配置
+importance:
+  # 提交类型权重（权重越高越重要）
+  commit_types:
+    feat: 8          # 新功能
+    fix: 7           # Bug 修复
+    perf: 6          # 性能优化
+    refactor: 5      # 代码重构
+    test: 3          # 测试相关
+    docs: 2          # 文档更新
+    ci: 2            # CI/CD 配置
+    chore: 1         # 杂项
+    style: 1         # 代码风格
+    build: 1         # 构建相关
+    other: 3         # 无前缀的提交
+
+  # 变更规模阈值（行数）
+  change_sizes:
+    large: 500       # >500 行为大型变更
+    medium: 100      # 100-500 行为中型变更
+    small: 50        # 50-100 行为小型变更
+    # <50 行为微型变更
+
+  # 文件类型权重
+  file_types:
+    core: 2          # 核心代码文件（.py, .rs, .cpp 等）
+    config: 1        # 配置文件（.yaml, .json 等）
+    test: 1          # 测试文件（*_test.py 等）
+    doc: 0           # 文档文件（.md, .rst 等）
+
+  # 影响范围阈值（文件数量）
+  scopes:
+    wide: 5          # >5 个文件为广泛影响
+    medium: 3        # 3-5 个文件为中等影响
+
+  # 重要性等级阈值（总分）
+  thresholds:
+    high: 10         # >=10 为高重要度
+    medium: 6        # 6-9 为中重要度
+    # <6 为低重要度
+
+# 速率限制配置
+rate_limit:
+  # 智能速率控制延迟（秒）
+  delays:
+    fast: 5          # API 响应快时的延迟
+    normal: 10       # 默认延迟
+    slow: 15         # API 响应慢时的延迟
+
+  # 指数退避配置（遇到限流时）
+  backoff:
+    initial: 10      # 初始退避时间（秒）
+    max: 30          # 最大退避时间（秒）
+    multiplier: 1    # 倍增系数（当前为线性）
+
+  # 重试配置
+  retry:
+    max_attempts: 3  # 最大重试次数
+
+# 报告格式配置
+format:
+  # 是否启用目录（TOC）
+  enable_toc: true
+
+  # 是否按重要程度分组
+  enable_grouping: true
+
+  # 是否显示统计摘要
+  enable_stats: true
+
+  # 差异截断配置
+  diff:
+    truncate_threshold: 50000  # 超过 50KB 截断（字节）
+    truncate_to: 50000         # 截断到 50KB（字节）
+
+# LLM 分析配置
+llm:
+  # 分析深度控制（可选，默认根据重要性自动调整）
+  # low: 简化分析（3 字段）
+  # medium: 标准分析（5 字段）
+  # high: 完整分析（7 字段）
+  force_level: null  # 不强制，根据评分自动判断
+
+  # 超时设置
+  timeout: 30  # API 请求超时时间（秒）
+
+  # 最大 Token 数
+  max_tokens: 2048

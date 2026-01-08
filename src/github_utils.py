@@ -2,14 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import logging
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
 import pytz
 from github import Github
 from github.Commit import Commit
 from github.GithubException import GithubException
 
 TIME_ZONE = pytz.timezone('Asia/Shanghai')
+
+# 存储已使用的锚点，用于检测重复
+_used_anchors: Dict[str, List[str]] = {}
 
 def init_github_client(token=None):
     """初始化GitHub客户端
@@ -258,3 +263,250 @@ def create_issue(repo, title, body):
     except Exception as e:
         logging.error(f"创建issue出错: {str(e)}")
     return None
+
+
+# ============================================================================
+# 报告格式增强函数
+# ============================================================================
+
+def sanitize_commit_title(message: str, sha: str = "") -> Tuple[str, str]:
+    """清理 commit message 标题以用作 Markdown 锚点
+
+    Args:
+        message: 完整的 commit message
+        sha: commit SHA（用于生成唯一锚点）
+
+    Returns:
+        (sanitized_title, anchor_id): 清理后的标题和锚点ID
+    """
+    if not message:
+        message = "无标题提交"
+
+    # 提取第一行作为标题
+    title = message.split('\n')[0].strip()
+
+    # 限制最大长度（80字符）
+    if len(title) > 80:
+        title = title[:77] + "..."
+
+    # 清理特殊字符
+    # 移除或替换：# @ [ ] ( ) 等特殊字符
+    # 保留：字母、数字、常见标点（. , - _ : 等）
+    sanitized = re.sub(r'[#@()[\]{}]', '', title)
+    sanitized = re.sub(r'\s+', '-', sanitized)  # 空格替换为连字符
+
+    # 生成锚点ID（转换为小写，移除特殊字符）
+    anchor_id = re.sub(r'[^\w\u4e00-\u9fff-]', '-', sanitized.lower())
+    anchor_id = re.sub(r'-+', '-', anchor_id).strip('-')
+
+    # 如果锚点为空或太短，使用SHA
+    if not anchor_id or len(anchor_id) < 3:
+        anchor_id = sha[:7] if sha else "commit"
+
+    # 确保锚点唯一（简单处理：如果重复，添加SHA后缀）
+    # 注意：这里使用全局变量跟踪，实际使用时需要在外部管理
+    global _used_anchors
+    if anchor_id not in _used_anchors:
+        _used_anchors[anchor_id] = []
+    _used_anchors[anchor_id].append(sha[:7])
+
+    if len(_used_anchors[anchor_id]) > 1:
+        anchor_id = f"{anchor_id}-{sha[:7]}"
+
+    logging.debug(f"标题清理: '{title}' -> '{sanitized}' (锚点: #{anchor_id})")
+    return sanitized, anchor_id
+
+
+def format_commit_header(commit, analysis_result: Optional[Dict] = None) -> str:
+    """格式化提交标题（使用 commit message 标题 + SHA 副标题）
+
+    Args:
+        commit: GitHub commit 对象
+        analysis_result: LLM 分析结果（可选）
+
+    Returns:
+        str: 格式化后的提交标题
+    """
+    message = commit.commit.message
+    sha = commit.sha[:7]
+    url = commit.html_url
+
+    # 清理标题
+    sanitized_title, anchor_id = sanitize_commit_title(message, sha)
+
+    # 生成标题
+    header = f"### {sanitized_title}\n"
+    header += f"**SHA**: `{sha}` | 🔗 [查看提交]({url})\n"
+
+    # 如果有分析错误，添加错误提示
+    if analysis_result and 'error' in analysis_result:
+        header += f"\n⚠️ {analysis_result['error']}\n"
+
+    return header
+
+
+def calculate_stats(commits_with_analysis: List[Dict]) -> Dict:
+    """计算统计信息
+
+    Args:
+        commits_with_analysis: 包含 commit 和 importance_info 的字典列表
+
+    Returns:
+        dict: 统计结果
+        {
+            'total': int,           # 总提交数
+            'high': int,            # 高重要度数量
+            'medium': int,          # 中重要度数量
+            'low': int,             # 低重要度数量
+        }
+    """
+    stats = {
+        'total': len(commits_with_analysis),
+        'high': 0,
+        'medium': 0,
+        'low': 0
+    }
+
+    for item in commits_with_analysis:
+        importance_info = item.get('importance_info', {})
+        level = importance_info.get('level', 'low')
+
+        if level == 'high':
+            stats['high'] += 1
+        elif level == 'medium':
+            stats['medium'] += 1
+        else:
+            stats['low'] += 1
+
+    return stats
+
+
+def create_stats_summary(stats: Dict) -> str:
+    """创建统计摘要 Markdown
+
+    Args:
+        stats: 统计信息字典
+
+    Returns:
+        str: Markdown 格式的统计摘要
+    """
+    return f"### 📊 统计摘要\n> 本日共 {stats['total']} 个提交 | 🔴高 {stats['high']} | 🟡中 {stats['medium']} | 🟢低 {stats['low']}\n"
+
+
+def group_by_importance(commits_with_analysis: List[Dict]) -> Dict:
+    """按重要程度分组
+
+    Args:
+        commits_with_analysis: 包含 commit 和 importance_info 的字典列表
+
+    Returns:
+        dict: 分组结果
+        {
+            'high': [...],      # 高重要度提交列表
+            'medium': [...],    # 中重要度提交列表
+            'low': [...],       # 低重要度提交列表
+        }
+    """
+    groups = {
+        'high': [],
+        'medium': [],
+        'low': []
+    }
+
+    for item in commits_with_analysis:
+        importance_info = item.get('importance_info', {})
+        level = importance_info.get('level', 'low')
+        groups[level].append(item)
+
+    return groups
+
+
+def format_grouped_analysis(groups: Dict) -> str:
+    """格式化分组后的分析结果
+
+    Args:
+        groups: 按重要程度分组的提交
+
+    Returns:
+        str: Markdown 格式的分组分析
+    """
+    result = ""
+
+    # 定义等级顺序和对应的emoji
+    levels = [
+        ('high', '🔴', '高'),
+        ('medium', '🟡', '中'),
+        ('low', '🟢', '低')
+    ]
+
+    for level_key, emoji, label_cn in levels:
+        items = groups.get(level_key, [])
+
+        if not items:
+            continue
+
+        result += f"#### {emoji} {label_cn}重要度变更 ({len(items)})\n\n"
+
+        for item in items:
+            commit = item['commit']
+            analysis = item.get('analysis')
+
+            # 添加提交标题
+            result += format_commit_header(commit, item)
+
+            # 添加分析结果
+            if analysis:
+                result += f"\n{analysis}\n"
+            else:
+                result += "\n*暂无分析*\n"
+
+            result += "\n---\n\n"
+
+    return result
+
+
+def create_toc(commits_with_analysis: List[Dict], repo_name: str) -> str:
+    """生成目录 (TOC)
+
+    Args:
+        commits_with_analysis: 包含 commit 和 importance_info 的字典列表
+        repo_name: 仓库名称
+
+    Returns:
+        str: Markdown 格式的目录
+    """
+    toc = "## 📋 目录\n\n"
+    toc += f"- [{repo_name}](#{repo_name.lower().replace('/', '-')})\n"
+
+    # 添加统计摘要链接
+    toc += "  - [📊 统计摘要](#-统计摘要)\n"
+
+    # 按重要程度分组生成目录
+    groups = group_by_importance(commits_with_analysis)
+    level_names = {
+        'high': ('🔴', '高'),
+        'medium': ('🟡', '中'),
+        'low': ('🟢', '低')
+    }
+
+    for level_key in ['high', 'medium', 'low']:
+        items = groups.get(level_key, [])
+        if items:
+            emoji, label_cn = level_names[level_key]
+            toc += f"  - [{emoji} {label_cn}重要度变更 ({len(items)})](#-{emoji}-{label_cn}重要度变更-{len(items)})\n"
+
+            # 添加该组内的提交链接
+            for item in items:
+                commit = item['commit']
+                message = commit.commit.message
+                sha = commit.sha[:7]
+
+                # 清理标题生成锚点
+                _, anchor_id = sanitize_commit_title(message, sha)
+                title = message.split('\n')[0].strip()
+                if len(title) > 50:
+                    title = title[:47] + "..."
+
+                toc += f"    - [{title}](#{anchor_id})\n"
+
+    return toc

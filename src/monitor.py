@@ -14,11 +14,23 @@ from github_utils import (
     create_commit_report,
     create_report_file,
     get_report_file_path,
-    TIME_ZONE
+    TIME_ZONE,
+    create_toc,
+    calculate_stats,
+    create_stats_summary,
+    group_by_importance,
+    format_grouped_analysis,
 )
 
 from llm import (
     analyze_commit,
+)
+
+from config import (
+    load_config,
+    get_importance_config,
+    get_rate_limit_config,
+    get_format_config,
 )
 
 # 配置要监控的仓库
@@ -75,6 +87,7 @@ def main():
     parser.add_argument('--debug', action='store_true', help='启用详细日志输出')
     parser.add_argument('--dry-run', action='store_true', help='dry-run模式：只输出报告内容，不创建GitHub Issue')
     parser.add_argument('--enable-analysis', action='store_true', help='启用LLM分析模式')
+    parser.add_argument('--config', type=str, default=None, help='配置文件路径（默认为项目根目录的 config.yaml）')
     args = parser.parse_args()
 
     # 设置调试模式
@@ -87,6 +100,10 @@ def main():
                         format="%(asctime)s - %(levelname)s - %(message)s",
                         handlers=[logging.StreamHandler()])
     logging.debug("调试模式已启用")
+
+    # 加载配置文件
+    config = load_config(args.config)
+    logging.debug(f"配置已加载: {args.config or '默认配置'}")
 
     # 从环境变量读取配置
     token = os.getenv("TOKEN")
@@ -121,11 +138,43 @@ def main():
             # 从环境变量读取 LLM 配置
             llm_api_key = os.getenv("LLM_API_KEY")
             llm_model = os.getenv("LLM_MODEL")
-            analysis_result = analyze_commit(commits, api_key=llm_api_key, model=llm_model)
-            logging.debug("LLM分析结果:")
-            logging.debug(analysis_result)
-            report_content += f"## {repo_name} 的LLM分析结果\n\n"
-            report_content += analysis_result
+
+            # 构建仓库上下文信息
+            repo_context = {
+                'name': repo.full_name,
+                'language': repo.language or 'Unknown',
+                'stars': repo.stargazers_count,
+            }
+
+            # 调用新版 analyze_commit，返回字典列表
+            # 提取重要性评分配置
+            importance_config = get_importance_config(config)
+
+            commits_with_analysis = analyze_commit(
+                commits,
+                repo_context=repo_context,
+                api_key=llm_api_key,
+                model=llm_model,
+                config=importance_config
+            )
+
+            # 生成增强的报告格式
+            if commits_with_analysis:
+                # 统计摘要
+                stats = calculate_stats(commits_with_analysis)
+                report_content += create_stats_summary(stats)
+
+                # 目录 (TOC)
+                report_content += create_toc(commits_with_analysis, repo_name)
+
+                # 按重要程度分组并格式化
+                groups = group_by_importance(commits_with_analysis)
+                report_content += format_grouped_analysis(groups)
+
+                logging.debug(f"LLM分析完成: 总计 {stats['total']} 个提交")
+                logging.debug(f"  - 🔴 高重要度: {stats['high']}")
+                logging.debug(f"  - 🟡 中重要度: {stats['medium']}")
+                logging.debug(f"  - 🟢 低重要度: {stats['low']}")
         if args.debug:
             logging.debug("\n生成的报告内容预览:")
             logging.debug(report_content)
