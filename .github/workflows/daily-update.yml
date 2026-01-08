@@ -32,7 +32,7 @@ jobs:
 
       - name: Run monitor script
         env:
-          # GITHUB_TOKEN is automatically provided by GitHub Actions
+          TOKEN: ${{ secrets.TOKEN }}
           REPOSITORY: ${{ github.repository }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
